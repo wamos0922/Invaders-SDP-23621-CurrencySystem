@@ -103,6 +103,13 @@ public class GameScreen extends Screen {
 	private static final int ACHIEVEMENT_POPUP_SLIDE_OUT = 350;
 	/** Height of the interface separation line. */
 	private static final int SEPARATION_LINE_HEIGHT = 40;
+	/**
+	 * Highest the ship may fly in endless free roam (GOG-7): below the HUD,
+	 * the item slots and the bonus ship's lane.
+	 */
+	private static final int FREE_ROAM_TOP = SEPARATION_LINE_HEIGHT + 36;
+	/** Distance from the bottom of the screen to the ship's starting row. */
+	private static final int SHIP_ROW_FROM_BOTTOM = 30;
 	/** Lives at or below this value start the glitch. */
 	private static final int LOW_HEALTH_LIVES = 1;
 	/** Low-life effect duration (ms). */
@@ -359,7 +366,7 @@ public class GameScreen extends Screen {
 		SoundManager.getInstance().playBgm(Sound.BGM_GAME);
 
 		// Initialize the player in both boss and normal stages.
-		this.ship = new Ship(this.width / 2, this.height - 30,
+		this.ship = new Ship(this.width / 2, this.height - SHIP_ROW_FROM_BOTTOM,
 				Core.getSelectedShipType());
 
 		// Distinct mid-boss and final boss encounters (story mode only;
@@ -524,6 +531,10 @@ public class GameScreen extends Screen {
 				if (moveLeft && !isLeftBorder) {
 					this.ship.moveLeft();
 				}
+				// Endless free roam (GOG-7): the ship can also fly up and
+				// down, anywhere between the HUD and its starting row.
+				if (EndlessMode.isEnabled())
+					moveFreeRoam();
 				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 					// Count bullets, not trigger pulls: Two Way fires two at
 					// once, and accuracy is kills per bullet.
@@ -578,6 +589,7 @@ public class GameScreen extends Screen {
 				&& !this.levelFinished && this.lives > 0
 				&& !this.ship.isDestroyed());
 		manageCollisions();
+		manageFreeRoamCrashes();
 		showScoreBoostPopups(); // Item System (Team CS)
 		cleanBullets();
 		updateParticles(); // AUTHORED BY: VFX TEAM (Effection)
@@ -990,7 +1002,9 @@ public class GameScreen extends Screen {
 			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
 					/ 12);
 			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
-			drawManager.drawKeyHints(this, "P to pause");
+			drawManager.drawKeyHints(this, EndlessMode.isEnabled()
+					? "arrows / WASD fly anywhere, P to pause"
+					: "P to pause");
 		}
 
 
@@ -1059,6 +1073,64 @@ public class GameScreen extends Screen {
 		}
 		this.bullets.removeAll(recyclable);
 		BulletPool.recycle(recyclable);
+	}
+
+	/**
+	 * Moves the ship up or down in endless free roam (GOG-7). It stays
+	 * between FREE_ROAM_TOP and its starting row at the bottom.
+	 */
+	private void moveFreeRoam() {
+		boolean moveUp = inputManager.isKeyDown(KeyEvent.VK_UP)
+				|| inputManager.isKeyDown(KeyEvent.VK_W);
+		boolean moveDown = inputManager.isKeyDown(KeyEvent.VK_DOWN)
+				|| inputManager.isKeyDown(KeyEvent.VK_S);
+		int speed = this.ship.getSpeed();
+		int y = this.ship.getPositionY();
+		if (moveUp && !moveDown)
+			this.ship.setPositionY(Math.max(FREE_ROAM_TOP, y - speed));
+		if (moveDown && !moveUp)
+			this.ship.setPositionY(Math.min(
+					this.height - SHIP_ROW_FROM_BOTTOM, y + speed));
+	}
+
+	/**
+	 * Free roam (GOG-7): flying into an enemy costs a life, like being shot
+	 * (a shield blocks it), and sends the ship back to its starting row.
+	 * The enemy is wrecked too, but gives no score, coins or drops, so
+	 * ramming is not a way to farm rewards.
+	 */
+	private void manageFreeRoamCrashes() {
+		if (!EndlessMode.isEnabled() || this.levelFinished
+				|| this.ship.isDestroyed() || this.lives <= 0)
+			return;
+		EnemyShip rammed = null;
+		for (EnemyShip enemyShip : this.enemyShipFormation) {
+			if (!enemyShip.isDestroyed()
+					&& checkCollision(enemyShip, this.ship)) {
+				rammed = enemyShip;
+				break;
+			}
+		}
+		if (rammed == null)
+			return;
+
+		spawnSparkles(rammed);
+		this.enemyShipFormation.destroy(rammed);
+		this.screenShake.trigger();
+		// Back to the starting row, so the ship does not crash again
+		// straight away into the enemies next to the one it hit.
+		this.ship.setPositionY(this.height - SHIP_ROW_FROM_BOTTOM);
+		if (this.items.tryBlockHit()) { // Shield item (Team CS)
+			this.logger.info("Crashed into an enemy, blocked by shield.");
+			return;
+		}
+		this.ship.destroy();
+		this.lives--;
+		PlayerSounds.playHit(this.lives);
+		this.tookDamage = true;
+		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+		this.logger.info("Crashed into an enemy, " + this.lives
+				+ " lives remaining.");
 	}
 
 	/**
