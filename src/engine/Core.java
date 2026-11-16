@@ -155,7 +155,10 @@ public final class Core {
 		if (startLevel < 1 || startLevel > NUM_LEVELS)
 			startLevel = 1;
 
-		int returnCode = startLevel == 1 ? 1 : 2;
+		// Menu codes: 2 = main story, 8 = endless game (GOG-13). Skipping the
+		// menu with -Dgame.startLevel keeps -Dgame.mode=endless working.
+		int returnCode = startLevel == 1 ? 1
+				: (EndlessMode.isEnabled() ? 8 : 2);
 		do {
 			gameState = new GameState(startLevel, 0, MAX_LIVES, 0, 0, 0);
 
@@ -169,6 +172,12 @@ public final class Core {
 				LOGGER.info("Closing title screen.");
 				break;
 			case 2:
+			case 8:
+				// Main story (2) or endless game (8), chosen on the main menu
+				// (GOG-13). Endless mode (GOG-7) has no last level: it runs
+				// until the player is out of lives.
+				boolean endless = returnCode == 8;
+				EndlessMode.setEnabled(endless);
 				// Practice first; ESC returns to the menu without starting a run.
 				if (startLevel == 1) {
 					currentScreen = new TutorialScreen(width, height, FPS);
@@ -177,9 +186,6 @@ public final class Core {
 						break;
 					}
 				}
-				// Game & score. Endless mode (GOG-7) has no last level: it
-				// runs until the player is out of lives.
-				boolean endless = EndlessMode.isEnabled();
 				do {
 					// One extra live every few levels.
 					boolean bonusLife = gameState.getLevel()
@@ -233,6 +239,9 @@ public final class Core {
 				currentScreen = new ScoreScreen(width, height, FPS, gameState);
 				returnCode = frame.setScreen(currentScreen);
 				LOGGER.info("Closing score screen.");
+				// "Play again" returns 2; an endless run restarts as endless.
+				if (endless && returnCode == 2)
+					returnCode = 8;
 				break;
 			case 3:
 				// High scores.

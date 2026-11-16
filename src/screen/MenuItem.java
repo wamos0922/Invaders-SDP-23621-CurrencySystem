@@ -14,8 +14,10 @@ package screen;
  */
 public enum MenuItem {
 
-	/** Starts the game. */
-	PLAY("Play", 2, true),
+	/** Starts the main story (levels 1 to 10, with bosses). */
+	MAIN_STORY("Main story", 2, true),
+	/** Starts endless mode (GOG-13): waves until the player is out of lives. */
+	ENDLESS("Endless game", 8, true),
 	/** Customize screen (ship selection). */
 	SHIP_SELECT("Customize", 7, true),
 	/** Shop screen. */
