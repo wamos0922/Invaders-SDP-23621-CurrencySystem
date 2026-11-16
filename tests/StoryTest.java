@@ -1,277 +1,426 @@
 
 package test;
 
-import story.StoryPanel;
+import engine.Core;
+import engine.EndlessMode;
+import engine.Frame;
+import engine.GameSettings;
+import engine.GameState;
+import engine.StoryMode;
 
-import javax.swing.*;
-import java.awt.*;
-import java.io.IOException;
+import screen.GameScreen;
+import screen.TitleScreen;
+
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.KeyEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * GOG-24 private story sequence tester.
+ * GOG-24: Playable Story Mode Test
  *
- * Run this class directly in IntelliJ.
+ * Runs the real Story Mode with real gameplay.
  *
- * This does not launch Core.java, award currency,
- * modify save data, or affect normal gameplay.
+ * TEST CONTROLS:
+ * F8 = Skip the current gameplay level.
  *
- * Each checkpoint simulates the end of a level
- * or tutorial and plays the appropriate cutscene.
+ * Normal gameplay remains unchanged.
+ * No changes to Core.java or GameScreen.java.
  */
 public final class StoryTest {
 
-    private static final int WINDOW_WIDTH = 700;
-    private static final int WINDOW_HEIGHT = 780;
+    private static final int WIDTH = 448;
+    private static final int HEIGHT = 520;
+    private static final int FPS = 60;
 
-    private static final String[] CHECKPOINTS = {
-            "Start - Prologue (Panels 1-5)",
-            "Tutorial complete (Panels 6-8)",
-            "Level 5 complete (Panels 9-11)",
-            "Level 10 complete (Panels 12-13)",
-            "Level 20 complete (Panels 14-17)",
-            "Level 30 complete (Panel 18)",
-            "Level 35 complete (Panels 19-26)",
-            "Level 39 complete (Panel 27)",
-            "Level 40 complete (Panels 28-33)"
-    };
+    private static final int MAX_LIVES = 3;
 
-    private static final int[][] RANGES = {
-            {1, 5},
-            {6, 8},
-            {9, 11},
-            {12, 13},
-            {14, 17},
-            {18, 18},
-            {19, 26},
-            {27, 27},
-            {28, 33}
-    };
-
-    private JFrame window;
-    private JPanel root;
-    private StoryPanel activeStory;
-    private int checkpoint;
-
-    private final JLabel status = new JLabel(
-            "STORY MODE TEST",
-            SwingConstants.CENTER);
+    private static Frame frame;
 
     private StoryTest() {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new StoryTest().start();
-        });
+
+        // Story Mode only.
+        EndlessMode.setEnabled(false);
+
+        frame = new Frame(
+                WIDTH,
+                HEIGHT,
+                Core.SCALE
+        );
+
+        // Initialize the real drawing manager.
+        Core.getDrawManager().setFrame(frame);
+
+        frame.setTitle(
+                "SPACE INVADERS - STORY TEST"
+        );
+
+        int width = frame.getWidth();
+        int height = frame.getHeight();
+
+        System.out.println(
+                "================================");
+        System.out.println(
+                "       STORY MODE TEST");
+        System.out.println(
+                "================================");
+        System.out.println(
+                "F8 = Skip current level");
+        System.out.println(
+                "All story panels are enabled.");
+        System.out.println(
+                "================================");
+
+        // Show the actual game's main menu.
+        while (frame.isDisplayable()) {
+
+            TitleScreen title =
+                    new TitleScreen(width, height, FPS);
+
+            int selection = frame.setScreen(title);
+
+            if (selection == 0) {
+                break;
+            }
+
+            if (selection == 2) {
+
+                runStoryMode(width, height);
+
+            } else {
+
+                System.out.println(
+                        "[TEST] Select Story Mode "
+                                + "from the main menu.");
+            }
+        }
+
+        frame.dispose();
     }
 
-    private void start() {
-        window = new JFrame("Space Invaders - Story Test");
-        window.setDefaultCloseOperation(
-                JFrame.DISPOSE_ON_CLOSE);
-        window.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-        window.setLocationRelativeTo(null);
+    /**
+     * Runs the real Story Mode introduction,
+     * followed by all 40 gameplay levels.
+     */
+    private static void runStoryMode(
+            final int width,
+            final int height) {
 
-        root = new JPanel(new BorderLayout());
-        root.setBackground(new Color(8, 22, 12));
+        EndlessMode.setEnabled(false);
 
-        window.setContentPane(root);
+        // =====================================
+        // STORY INTRODUCTION
+        // =====================================
 
-        window.addWindowListener(
-                new java.awt.event.WindowAdapter() {
-                    @Override
-                    public void windowClosed(
-                            java.awt.event.WindowEvent e) {
-                        closeActiveStory();
-                    }
-                });
+        // Real sequence:
+        // Panels 1-5
+        // Tutorial
+        // Panels 6-8
 
-        window.setVisible(true);
-        showCheckpoint(0);
-    }
+        boolean started = StoryMode.startStory(
+                frame,
+                width,
+                height,
+                FPS
+        );
 
-    private void showCheckpoint(int index) {
-        if (index < 0 || index >= RANGES.length) {
-            showFinished();
+        if (!started) {
+
+            System.out.println(
+                    "[TEST] Tutorial cancelled.");
+
             return;
         }
 
-        closeActiveStory();
+        // =====================================
+        // INITIAL PLAYER STATE
+        // =====================================
 
-        checkpoint = index;
-        int first = RANGES[index][0];
-        int last = RANGES[index][1];
+        GameState gameState = new GameState(
+                1,
+                0,
+                MAX_LIVES,
+                0,
+                0,
+                0
+        );
 
-        root.removeAll();
+        // =====================================
+        // LEVEL LOOP
+        // =====================================
 
-        JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(new Color(12, 42, 23));
+        for (int level = 1;
+             level <= StoryMode.TOTAL_LEVELS;
+             level++) {
 
-        status.setText(CHECKPOINTS[index]);
-        status.setForeground(new Color(160, 255, 170));
-        status.setFont(new Font(
-                "SansSerif", Font.BOLD, 17));
+            if (!frame.isDisplayable()) {
+                return;
+            }
 
-        top.add(status, BorderLayout.CENTER);
+            int chapter =
+                    StoryMode.getChapter(level);
 
-        root.add(top, BorderLayout.NORTH);
+            int chapterLevel =
+                    StoryMode.getLevelInChapter(level);
+
+            System.out.println();
+            System.out.println(
+                    "================================");
+
+            System.out.println(
+                    "[TEST] CHAPTER " + chapter);
+
+            System.out.println(
+                    "[TEST] LEVEL " + level
+                            + " / 40");
+
+            System.out.println(
+                    "[TEST] Chapter level "
+                            + chapterLevel + " / 10");
+
+            System.out.println(
+                    "[TEST] Press F8 to skip.");
+
+            System.out.println(
+                    "================================");
+
+            frame.setTitle(
+                    "STORY TEST | LEVEL "
+                            + level
+                            + "/40 | F8 SKIP"
+            );
+
+            // Get the real gameplay settings.
+            GameSettings settings =
+                    StoryMode.getSettings(level);
+
+            // Create the actual GameScreen.
+            GameScreen gameScreen =
+                    new GameScreen(
+                            gameState,
+                            settings,
+                            false,
+                            width,
+                            height,
+                            FPS
+                    );
+
+            // Run the actual level with
+            // a test-only F8 skip shortcut.
+            boolean skipped =
+                    playSkippableLevel(gameScreen);
+
+            if (!frame.isDisplayable()) {
+                return;
+            }
+
+            // Retrieve the actual gameplay state.
+            GameState result =
+                    gameScreen.getGameState();
+
+            if (skipped) {
+
+                System.out.println(
+                        "[TEST] SKIPPED LEVEL "
+                                + level);
+
+            } else if (
+                    result.getLivesRemaining() <= 0) {
+
+                System.out.println(
+                        "[TEST] GAME OVER.");
+
+                return;
+
+            } else {
+
+                System.out.println(
+                        "[TEST] CLEARED LEVEL "
+                                + level);
+            }
+
+            // =================================
+            // PLAY STORY CHECKPOINTS
+            // =================================
+
+            // Uses the real StoryMode schedule.
+            // For example, completing Level 5
+            // automatically plays Panels 9-11.
+
+            StoryMode.onLevelCompleted(
+                    frame,
+                    level
+            );
+
+            // =================================
+            // PREPARE NEXT LEVEL
+            // =================================
+
+            // In test mode, skipping restores
+            // the player's lives to three.
+            //
+            // This prevents skipped levels from
+            // stopping the story progression.
+
+            int nextLives = skipped
+                    ? MAX_LIVES
+                    : result.getLivesRemaining();
+
+            gameState = new GameState(
+                    level + 1,
+                    result.getScore(),
+                    nextLives,
+                    result.getBulletsShot(),
+                    result.getShipsDestroyed(),
+
+                    // Keep test rewards isolated
+                    // from the normal cash-out flow.
+                    0,
+
+                    result.getLevelsCompletedRun(),
+                    result.getCoinsCollected()
+            );
+        }
+
+        // =====================================
+        // STORY FINISHED
+        // =====================================
+
+        System.out.println();
+        System.out.println(
+                "================================");
+
+        System.out.println(
+                "[TEST] ALL 40 LEVELS FINISHED!");
+
+        System.out.println(
+                "[TEST] STORY TEST COMPLETE.");
+
+        System.out.println(
+                "================================");
+
+        frame.setTitle(
+                "STORY TEST - COMPLETED"
+        );
+    }
+
+    /**
+     * Runs a normal GameScreen on a dedicated
+     * gameplay thread.
+     *
+     * Pressing F8 interrupts that thread.
+     *
+     * The existing Screen.run() method already
+     * handles InterruptedException and exits
+     * its gameplay loop.
+     *
+     * Therefore, we do not need to modify
+     * GameScreen.java.
+     *
+     * @return true if the level was skipped.
+     */
+    private static boolean playSkippableLevel(
+            final GameScreen gameScreen) {
+
+        AtomicBoolean skipped =
+                new AtomicBoolean(false);
+
+        AtomicBoolean running =
+                new AtomicBoolean(true);
+
+        // The actual game runs on this thread.
+        Thread gameplayThread = new Thread(
+                () -> {
+
+                    try {
+
+                        frame.setScreen(gameScreen);
+
+                    } finally {
+
+                        running.set(false);
+                    }
+                },
+                "StoryTest-Gameplay"
+        );
+
+        // F8 listener, enabled only during
+        // gameplay levels.
+        KeyEventDispatcher skipListener =
+                event -> {
+
+                    if (event.getKeyCode()
+                            != KeyEvent.VK_F8) {
+                        return false;
+                    }
+
+                    if (event.getID()
+                            == KeyEvent.KEY_PRESSED
+                            && running.get()
+                            && gameplayThread.isAlive()) {
+
+                        if (skipped.compareAndSet(
+                                false, true)) {
+
+                            System.out.println(
+                                    "[TEST] F8 pressed."
+                                            + " Skipping level.");
+
+                            gameplayThread.interrupt();
+                        }
+                    }
+
+                    // Consume F8 so the regular
+                    // game does not process it.
+                    return true;
+                };
+
+        KeyboardFocusManager manager =
+                KeyboardFocusManager
+                        .getCurrentKeyboardFocusManager();
+
+        // Enable the test shortcut.
+        manager.addKeyEventDispatcher(
+                skipListener
+        );
 
         try {
-            activeStory = new StoryPanel(
-                    first,
-                    last,
-                    () -> showCheckpointComplete(index));
 
-            root.add(activeStory, BorderLayout.CENTER);
+            // Start the real gameplay.
+            gameplayThread.start();
 
-        } catch (IOException e) {
-            JOptionPane.showMessageDialog(
-                    window,
-                    "Could not load panels "
-                            + first + "-" + last
-                            + "\n" + e.getMessage(),
-                    "Story Test Error",
-                    JOptionPane.ERROR_MESSAGE);
+            // Wait until gameplay finishes,
+            // either normally or by F8.
+            while (gameplayThread.isAlive()) {
 
-            showCheckpointComplete(index);
-            return;
+                try {
+
+                    gameplayThread.join(100);
+
+                } catch (InterruptedException e) {
+
+                    Thread.currentThread()
+                            .interrupt();
+
+                    gameplayThread.interrupt();
+
+                    return false;
+                }
+            }
+
+        } finally {
+
+            // Remove F8 when gameplay ends.
+            // It will not affect story panels,
+            // the tutorial, or the main menu.
+            manager.removeKeyEventDispatcher(
+                    skipListener
+            );
         }
 
-        root.add(createControls(), BorderLayout.SOUTH);
-
-        root.revalidate();
-        root.repaint();
-
-        activeStory.requestFocusInWindow();
-    }
-
-    private JPanel createControls() {
-        JPanel controls = new JPanel(
-                new FlowLayout(FlowLayout.CENTER, 8, 10));
-
-        controls.setBackground(new Color(12, 42, 23));
-
-        JButton previous = createButton(
-                "Previous checkpoint");
-        JButton skip = createButton(
-                "Skip level / cutscene");
-        JButton restart = createButton(
-                "Restart checkpoint");
-
-        previous.setEnabled(checkpoint > 0);
-
-        previous.addActionListener(e ->
-                showCheckpoint(checkpoint - 1));
-
-        skip.addActionListener(e ->
-                showCheckpoint(checkpoint + 1));
-
-        restart.addActionListener(e ->
-                showCheckpoint(checkpoint));
-
-        controls.add(previous);
-        controls.add(skip);
-        controls.add(restart);
-
-        return controls;
-    }
-
-    private JButton createButton(String title) {
-        JButton button = new JButton(title);
-        button.setFocusable(false);
-        button.setBackground(new Color(25, 80, 42));
-        button.setForeground(new Color(220, 255, 220));
-        button.setFont(new Font(
-                "SansSerif", Font.BOLD, 12));
-        button.setOpaque(true);
-
-        return button;
-    }
-
-    private void showCheckpointComplete(int index) {
-        closeActiveStory();
-        root.removeAll();
-
-        JPanel summary = new JPanel();
-        summary.setLayout(new BoxLayout(
-                summary, BoxLayout.Y_AXIS));
-        summary.setBackground(new Color(8, 22, 12));
-
-        JLabel heading = new JLabel(
-                "CHECKPOINT COMPLETED");
-        heading.setForeground(new Color(160, 255, 170));
-        heading.setFont(new Font(
-                "SansSerif", Font.BOLD, 25));
-        heading.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel details = new JLabel(CHECKPOINTS[index]);
-        details.setForeground(Color.WHITE);
-        details.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JLabel explanation = new JLabel(
-                "Gameplay is simulated in this test.");
-        explanation.setForeground(Color.LIGHT_GRAY);
-        explanation.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        JButton next = createButton(
-                index == RANGES.length - 1
-                        ? "Finish test"
-                        : "Skip gameplay - Next cutscene");
-
-        next.setAlignmentX(Component.CENTER_ALIGNMENT);
-        next.addActionListener(e ->
-                showCheckpoint(index + 1));
-
-        summary.add(Box.createVerticalGlue());
-        summary.add(heading);
-        summary.add(Box.createVerticalStrut(18));
-        summary.add(details);
-        summary.add(Box.createVerticalStrut(10));
-        summary.add(explanation);
-        summary.add(Box.createVerticalStrut(30));
-        summary.add(next);
-        summary.add(Box.createVerticalGlue());
-
-        root.add(summary, BorderLayout.CENTER);
-        root.add(createControls(), BorderLayout.SOUTH);
-
-        root.revalidate();
-        root.repaint();
-    }
-
-    private void showFinished() {
-        closeActiveStory();
-        root.removeAll();
-
-        JPanel end = new JPanel(new GridBagLayout());
-        end.setBackground(new Color(8, 22, 12));
-
-        JLabel message = new JLabel(
-                "ALL 33 STORY PANELS TESTED");
-
-        message.setFont(new Font(
-                "SansSerif", Font.BOLD, 23));
-        message.setForeground(new Color(160, 255, 170));
-
-        end.add(message);
-        root.add(end, BorderLayout.CENTER);
-
-        JButton restart = createButton("Restart entire test");
-        restart.addActionListener(e -> showCheckpoint(0));
-
-        JPanel bottom = new JPanel();
-        bottom.setBackground(new Color(12, 42, 23));
-        bottom.add(restart);
-
-        root.add(bottom, BorderLayout.SOUTH);
-        root.revalidate();
-        root.repaint();
-    }
-
-    private void closeActiveStory() {
-        if (activeStory != null) {
-            activeStory.close();
-            activeStory = null;
-        }
+        return skipped.get();
     }
 }
