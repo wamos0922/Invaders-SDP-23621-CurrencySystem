@@ -16,6 +16,7 @@ import javax.swing.SwingUtilities;
 
 import screen.TutorialScreen;
 import story.StoryPanel;
+import story.NameEntryPanel;
 
 /**
  * GOG-24: Story Mode Controller
@@ -23,7 +24,6 @@ import story.StoryPanel;
  * Controls:
  * - 40 story levels
  * - 4 chapters
- * - Story panels 1-33
  */
 public final class StoryMode {
 
@@ -34,11 +34,21 @@ public final class StoryMode {
     public static final int TOTAL_LEVELS = 40;
     public static final int LEVELS_PER_CHAPTER = 10;
 
+    private static String playerName = "Protagonist";
+
     private static final List<GameSettings> SETTINGS =
             createSettings();
 
     private StoryMode() {
         // Utility class.
+    }
+
+    /**
+     * Returns the name displayed when the
+     * protagonist speaks in story dialogue.
+     */
+    public static String getPlayerName() {
+        return playerName;
     }
 
     // ==========================================
@@ -95,21 +105,8 @@ public final class StoryMode {
     // STORY MODE START
     // ==========================================
 
-    /**
-     * Called by Core.java when Main Story is selected.
-     *
-     * Sequence:
-     *
-     * Panels 1-5
-     *     |
-     * Tutorial
-     *     |
-     * Panels 6-8
-     *     |
-     * Level 1
-     *
-     * Returns false if the tutorial is cancelled.
-     */
+
+
     public static boolean startStory(
             final Frame frame,
             final int width,
@@ -118,6 +115,72 @@ public final class StoryMode {
 
         System.out.println(
                 "[STORY] Starting Story Mode.");
+
+        // ======================================
+        // IN-GAME PLAYER NAME ENTRY
+        // ======================================
+
+        final CountDownLatch nameEntered =
+                new CountDownLatch(1);
+
+        final AtomicReference<String> chosenName =
+                new AtomicReference<>("Protagonist");
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException(
+                    "Story Mode must start from the game thread.");
+        }
+
+        SwingUtilities.invokeLater(() -> {
+
+            final Container content =
+                    frame.getContentPane();
+
+            final LayoutManager previousLayout =
+                    content.getLayout();
+
+            NameEntryPanel namePanel =
+                    new NameEntryPanel(name -> {
+
+                        chosenName.set(name);
+
+                        // Restore the game window.
+                        content.removeAll();
+                        content.setLayout(previousLayout);
+                        content.revalidate();
+                        content.repaint();
+
+                        frame.requestFocusInWindow();
+
+                        // Resume the game thread.
+                        nameEntered.countDown();
+                    });
+
+            content.removeAll();
+            content.setLayout(new BorderLayout());
+
+            content.add(
+                    namePanel,
+                    BorderLayout.CENTER);
+
+            content.revalidate();
+            content.repaint();
+
+            namePanel.requestFocusInWindow();
+        });
+
+        try {
+            nameEntered.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Name entry interrupted.", e);
+        }
+
+        playerName = chosenName.get();
+
+        System.out.println(
+                "[STORY] Player name: " + playerName);
 
         // ======================================
         // PROLOGUE: PANELS 1-5
@@ -140,7 +203,6 @@ public final class StoryMode {
 
         int result = frame.setScreen(tutorial);
 
-        // Player exits the tutorial.
         if (result != 2) {
 
             System.out.println(
@@ -164,16 +226,12 @@ public final class StoryMode {
         return true;
     }
 
+
     // ==========================================
     // STORY PROGRESSION
     // ==========================================
 
-    /**
-     * Called by Core.java after a story level
-     * has been successfully completed.
-     *
-     * All cutscene scheduling is handled here.
-     */
+
     public static void onLevelCompleted(
             final Frame frame,
             final int level) {
@@ -284,6 +342,11 @@ public final class StoryMode {
                 // Story ending.
                 showPanels(frame, 28, 33);
 
+                // GOG-24: Award the True Ending
+                // only after the ending cutscene.
+                Core.getAchievementManager()
+                        .recordTrueEndingCompleted();
+
                 System.out.println(
                         "[STORY] Story Mode completed!");
 
@@ -300,20 +363,6 @@ public final class StoryMode {
     // STORY PANEL DISPLAY
     // ==========================================
 
-    /**
-     * Displays story panels inside the SAME
-     * game window.
-     *
-     * Instead of creating a JDialog, this method
-     * temporarily places StoryPanel inside the
-     * existing Frame.
-     *
-     * The game waits until the player finishes
-     * the dialogue.
-     *
-     * After the final dialogue, StoryPanel is
-     * removed and gameplay can continue.
-     */
     private static void showPanels(
             final Frame frame,
             final int first,

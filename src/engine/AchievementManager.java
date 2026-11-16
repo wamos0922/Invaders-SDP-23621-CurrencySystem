@@ -81,6 +81,7 @@ public class AchievementManager {
 		addInfinityVoidAchievement();
 		addFirstBossKill();
 		addFleetMasterAchievement();
+		addTrueEndingAchievement();
 
 		// Page 2: tier achievements. The tier team adds theirs below,
 		// using addTierAchievement(...).
@@ -146,6 +147,34 @@ public class AchievementManager {
 				Requirement.LEVEL10_ALL_SHIPS);
 		addNormalAchievement(this.level10AllShips);
 	}
+
+
+	/**
+	 * GOG-24: True Ending achievement.
+	 *
+	 * Awarded after the player completes Story Mode
+	 * and finishes the final ending cutscene.
+	 */
+	private void addTrueEndingAchievement() {
+		addNormalAchievement(new Achievement(
+				"true_ending",
+				"True Ending",
+				"Complete all 40 Story Mode levels and witness the true ending.",
+				0,
+				SpriteType.Trophy,
+				this.playerProfile.isAchievementUnlocked("true_ending"),
+				Color.GREEN
+		));
+	}
+
+	/**
+	 * Unlocks and saves the True Ending achievement.
+	 * Called by StoryMode after Panel 33.
+	 */
+	public final Achievement recordTrueEndingCompleted() {
+		return unlockById("true_ending");
+	}
+
 
 	/** Adds the Bronze Hunter lifetime-kill tier achievement. */
 	private void addBronzeHunterAchievement() {

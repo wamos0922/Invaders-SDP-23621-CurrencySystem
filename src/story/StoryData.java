@@ -1,6 +1,8 @@
 
 package story;
 
+import engine.StoryMode;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -78,6 +80,11 @@ public class StoryData {
 
             String speaker = parts[0].trim();
             String text = parts[1].trim();
+
+            // Replace Protagonist with the player's chosen name.
+            if (speaker.equalsIgnoreCase("Protagonist")) {
+                speaker = StoryMode.getPlayerName();
+            }
 
             // Narration is displayed differently from character dialogue.
             Dialogue.DialogueType type =

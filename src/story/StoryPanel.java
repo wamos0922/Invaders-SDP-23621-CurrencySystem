@@ -14,12 +14,13 @@ public class StoryPanel extends JPanel {
     private static final int TYPING_DELAY = 35;
     private static final int SOUND_INTERVAL = 2;
 
-    private static final int TITLE_FONT_SIZE = 25;
-    private static final int PANEL_FONT_SIZE = 17;
-    private static final int SPEAKER_FONT_SIZE = 19;
-    private static final int DIALOGUE_FONT_SIZE = 17;
-    private static final int HINT_FONT_SIZE = 13;
-    private static final int LINE_SPACING = 23;
+    // Sizes adjusted for the wider Silkscreen font.
+    private static final int TITLE_FONT_SIZE = 23;
+    private static final int PANEL_FONT_SIZE = 13;
+    private static final int SPEAKER_FONT_SIZE = 15;
+    private static final int DIALOGUE_FONT_SIZE = 12;
+    private static final int HINT_FONT_SIZE = 10;
+    private static final int LINE_SPACING = 19;
 
     // Space Invaders green theme.
     private static final Color BACKGROUND =
@@ -50,10 +51,15 @@ public class StoryPanel extends JPanel {
         this(1, 5, () -> {});
     }
 
-    public StoryPanel(int firstPanel, int lastPanel,
-                      Runnable onFinished) throws IOException {
-        if (firstPanel < 1 || lastPanel > 33
+    public StoryPanel(
+            int firstPanel,
+            int lastPanel,
+            Runnable onFinished) throws IOException {
+
+        if (firstPanel < 1
+                || lastPanel > 33
                 || firstPanel > lastPanel) {
+
             throw new IllegalArgumentException(
                     "Invalid story panel range");
         }
@@ -66,7 +72,8 @@ public class StoryPanel extends JPanel {
         setFocusable(true);
 
         typingTimer = new Timer(
-                TYPING_DELAY, e -> updateTyping());
+                TYPING_DELAY,
+                e -> updateTyping());
 
         loadTypingSound();
         loadPanel(firstPanel);
@@ -78,9 +85,12 @@ public class StoryPanel extends JPanel {
     private void loadTypingSound() {
         try (AudioInputStream stream =
                      AudioSystem.getAudioInputStream(
-                             new File("res/sounds/Typing_Sound.wav"))) {
+                             new File(
+                                     "res/sounds/Typing_Sound.wav"))) {
+
             typingSound = AudioSystem.getClip();
             typingSound.open(stream);
+
         } catch (Exception e) {
             System.err.println(
                     "Typing sound unavailable: "
@@ -89,7 +99,9 @@ public class StoryPanel extends JPanel {
     }
 
     private void playSound() {
-        if (typingSound == null) return;
+        if (typingSound == null) {
+            return;
+        }
 
         typingSound.stop();
         typingSound.setFramePosition(0);
@@ -106,20 +118,28 @@ public class StoryPanel extends JPanel {
         getInputMap(WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(key), name);
 
-        getActionMap().put(name, new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                advance();
-            }
-        });
+        getActionMap().put(
+                name,
+                new AbstractAction() {
+                    @Override
+                    public void actionPerformed(
+                            ActionEvent e) {
+                        advance();
+                    }
+                });
     }
 
-    private void loadPanel(int number) throws IOException {
+    private void loadPanel(int number)
+            throws IOException {
+
         List<Dialogue> dialogues =
                 StoryData.loadPanel(number);
 
         panelNumber = number;
-        dialogueManager = new DialogueManager(dialogues);
+
+        dialogueManager =
+                new DialogueManager(dialogues);
+
         startTyping();
     }
 
@@ -130,7 +150,8 @@ public class StoryPanel extends JPanel {
         visibleCharacters = 0;
         lettersSinceSound = 0;
 
-        if (dialogueManager.getCurrentDialogue() != null) {
+        if (dialogueManager.getCurrentDialogue()
+                != null) {
             typingTimer.start();
         }
 
@@ -150,12 +171,15 @@ public class StoryPanel extends JPanel {
         String text = current.getText();
 
         if (visibleCharacters < text.length()) {
-            char letter = text.charAt(visibleCharacters++);
+            char letter =
+                    text.charAt(visibleCharacters++);
 
             if (Character.isLetterOrDigit(letter)) {
                 lettersSinceSound++;
 
-                if (lettersSinceSound >= SOUND_INTERVAL) {
+                if (lettersSinceSound
+                        >= SOUND_INTERVAL) {
+
                     playSound();
                     lettersSinceSound = 0;
                 }
@@ -171,15 +195,23 @@ public class StoryPanel extends JPanel {
     }
 
     private void advance() {
-        if (finished) return;
+        if (finished) {
+            return;
+        }
 
         Dialogue current =
                 dialogueManager.getCurrentDialogue();
 
-        if (current == null) return;
+        if (current == null) {
+            return;
+        }
 
-        if (visibleCharacters < current.getText().length()) {
-            visibleCharacters = current.getText().length();
+        if (visibleCharacters
+                < current.getText().length()) {
+
+            visibleCharacters =
+                    current.getText().length();
+
             typingTimer.stop();
             stopSound();
             repaint();
@@ -196,6 +228,7 @@ public class StoryPanel extends JPanel {
         if (panelNumber < lastPanel) {
             try {
                 loadPanel(panelNumber + 1);
+
             } catch (IOException e) {
                 typingTimer.stop();
                 stopSound();
@@ -205,6 +238,7 @@ public class StoryPanel extends JPanel {
                         "Story loading error: "
                                 + e.getMessage());
             }
+
             return;
         }
 
@@ -217,52 +251,77 @@ public class StoryPanel extends JPanel {
     }
 
     @Override
-    protected void paintComponent(Graphics graphics) {
+    protected void paintComponent(
+            Graphics graphics) {
+
         super.paintComponent(graphics);
 
-        Graphics2D g = (Graphics2D) graphics.create();
+        Graphics2D g =
+                (Graphics2D) graphics.create();
 
+        // Keep pixel-font edges sharp.
         g.setRenderingHint(
                 RenderingHints.KEY_TEXT_ANTIALIASING,
-                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
 
         int w = getWidth();
         int h = getHeight();
 
-        // Background.
+        // ======================================
+        // BACKGROUND
+        // ======================================
+
         g.setColor(BACKGROUND);
         g.fillRect(0, 0, w, h);
 
-        // Decorative green border.
         g.setColor(new Color(40, 105, 55));
         g.drawRoundRect(
-                10, 10, w - 21, h - 21, 12, 12);
+                10, 10,
+                w - 21, h - 21,
+                12, 12);
 
-        // Story title.
+        // ======================================
+        // STORY TITLE
+        // ======================================
+
         g.setColor(ACCENT);
-        g.setFont(new Font(
-                "SansSerif", Font.BOLD, TITLE_FONT_SIZE));
-        g.drawString("STORY MODE", 20, 43);
+        g.setFont(
+                StoryFont.bold(TITLE_FONT_SIZE));
 
-        // Panel number.
+        g.drawString(
+                "STORY MODE",
+                20, 43);
+
+        // ======================================
+        // PANEL NUMBER
+        // ======================================
+
         g.setColor(SECONDARY_TEXT);
-        g.setFont(new Font(
-                "SansSerif", Font.PLAIN, PANEL_FONT_SIZE));
+        g.setFont(
+                StoryFont.regular(PANEL_FONT_SIZE));
+
         g.drawString(
                 "Panel " + panelNumber + " / 33",
                 20, 73);
 
-        // Dialogue box.
+        // ======================================
+        // DIALOGUE BOX
+        // ======================================
+
         int boxY = h - 230;
         int boxHeight = 215;
 
         g.setColor(DIALOGUE_BOX);
         g.fillRoundRect(
-                15, boxY, w - 30, boxHeight, 15, 15);
+                15, boxY,
+                w - 30, boxHeight,
+                15, 15);
 
         g.setColor(new Color(50, 120, 65));
         g.drawRoundRect(
-                15, boxY, w - 31, boxHeight - 1, 15, 15);
+                15, boxY,
+                w - 31, boxHeight - 1,
+                15, 15);
 
         Dialogue current =
                 dialogueManager.getCurrentDialogue();
@@ -274,42 +333,60 @@ public class StoryPanel extends JPanel {
 
             int textX = 30;
 
+            // ==================================
+            // CHARACTER PORTRAIT
+            // ==================================
+
             if (!narration) {
-                // Placeholder for future character artwork.
                 g.setColor(PORTRAIT_BACKGROUND);
                 g.fillRoundRect(
-                        25, boxY + 20, 90, 110, 8, 8);
+                        25, boxY + 20,
+                        90, 110,
+                        8, 8);
 
                 g.setColor(SECONDARY_TEXT);
-                g.setFont(new Font(
-                        "SansSerif", Font.PLAIN, 13));
+                g.setFont(
+                        StoryFont.regular(10));
+
                 g.drawString(
-                        "Portrait", 43, boxY + 75);
+                        "Portrait",
+                        31, boxY + 75);
 
                 textX = 130;
             }
 
-            // Speaker name.
+            // ==================================
+            // SPEAKER NAME
+            // ==================================
+
             g.setColor(ACCENT);
-            g.setFont(new Font(
-                    "SansSerif", Font.BOLD,
-                    SPEAKER_FONT_SIZE));
+            g.setFont(
+                    StoryFont.bold(
+                            SPEAKER_FONT_SIZE));
+
             g.drawString(
                     current.getSpeaker(),
-                    textX, boxY + 33);
+                    textX,
+                    boxY + 33);
 
-            // Dialogue.
+            // ==================================
+            // DIALOGUE TEXT
+            // ==================================
+
             g.setColor(TEXT);
-            g.setFont(new Font(
-                    "SansSerif", Font.PLAIN,
-                    DIALOGUE_FONT_SIZE));
+            g.setFont(
+                    StoryFont.regular(
+                            DIALOGUE_FONT_SIZE));
 
-            String fullText = current.getText();
-            String visibleText = fullText.substring(
-                    0,
-                    Math.min(
-                            visibleCharacters,
-                            fullText.length()));
+            String fullText =
+                    current.getText();
+
+            String visibleText =
+                    fullText.substring(
+                            0,
+                            Math.min(
+                                    visibleCharacters,
+                                    fullText.length()));
 
             drawWrappedText(
                     g,
@@ -319,18 +396,25 @@ public class StoryPanel extends JPanel {
                     w - textX - 25);
         }
 
-        // Continue hint.
+        // ======================================
+        // CONTINUE HINT
+        // ======================================
+
         g.setColor(SECONDARY_TEXT);
-        g.setFont(new Font(
-                "SansSerif", Font.PLAIN, HINT_FONT_SIZE));
+        g.setFont(
+                StoryFont.regular(HINT_FONT_SIZE));
 
         g.drawString(
                 "SPACE / ENTER - Continue",
-                25, h - 25);
+                25,
+                h - 25);
 
         g.dispose();
     }
 
+    /**
+     * Draws dialogue with word wrapping.
+     */
     private void drawWrappedText(
             Graphics2D g,
             String text,
@@ -338,30 +422,44 @@ public class StoryPanel extends JPanel {
             int y,
             int maxWidth) {
 
-        FontMetrics metrics = g.getFontMetrics();
-        StringBuilder line = new StringBuilder();
+        FontMetrics metrics =
+                g.getFontMetrics();
+
+        StringBuilder line =
+                new StringBuilder();
 
         for (String word : text.split("\\s+")) {
+
             String candidate =
                     line.length() == 0
                             ? word
                             : line + " " + word;
 
-            if (metrics.stringWidth(candidate) > maxWidth
+            if (metrics.stringWidth(candidate)
+                    > maxWidth
                     && line.length() > 0) {
-                g.drawString(line.toString(), x, y);
+
+                g.drawString(
+                        line.toString(), x, y);
+
                 y += LINE_SPACING;
+
                 line = new StringBuilder(word);
+
             } else {
                 line = new StringBuilder(candidate);
             }
         }
 
         if (line.length() > 0) {
-            g.drawString(line.toString(), x, y);
+            g.drawString(
+                    line.toString(), x, y);
         }
     }
 
+    /**
+     * Stops animations and releases sound.
+     */
     public void close() {
         typingTimer.stop();
 
@@ -372,6 +470,9 @@ public class StoryPanel extends JPanel {
         }
     }
 
+    /**
+     * Standalone story panel test.
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -380,7 +481,8 @@ public class StoryPanel extends JPanel {
 
                 StoryPanel panel =
                         new StoryPanel(
-                                1, 5, window::dispose);
+                                1, 5,
+                                window::dispose);
 
                 window.setDefaultCloseOperation(
                         JFrame.DISPOSE_ON_CLOSE);
