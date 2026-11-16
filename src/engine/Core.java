@@ -102,7 +102,7 @@ public final class Core {
 					currentScreen = new TitleScreen(
 							width, height, FPS);
 
-					LOGGER.info("Starting main menu.");
+					LOGGER.info("Starting title screen.");
 
 					returnCode = frame.setScreen(currentScreen);
 					break;
