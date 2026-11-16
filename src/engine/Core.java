@@ -177,15 +177,19 @@ public final class Core {
 						break;
 					}
 				}
-				// Game & score.
+				// Game & score. Endless mode (GOG-7) has no last level: it
+				// runs until the player is out of lives.
+				boolean endless = EndlessMode.isEnabled();
 				do {
 					// One extra live every few levels.
 					boolean bonusLife = gameState.getLevel()
 							% EXTRA_LIFE_FRECUENCY == 0
 							&& gameState.getLivesRemaining() < MAX_LIVES;
 					
-					currentScreen = new GameScreen(gameState,
-							gameSettings.get(gameState.getLevel() - 1),
+					GameSettings levelSettings = endless
+							? EndlessMode.getSettings(gameState.getLevel())
+							: gameSettings.get(gameState.getLevel() - 1);
+					currentScreen = new GameScreen(gameState, levelSettings,
 							bonusLife, width, height, FPS);
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
 							+ " game screen at " + FPS + " fps.");
@@ -193,6 +197,8 @@ public final class Core {
 					LOGGER.info("Closing game screen.");
 
 					gameState = ((GameScreen) currentScreen).getGameState();
+					int clearedLevel = gameState.getLevel();
+					boolean clearedAlive = gameState.getLivesRemaining() > 0;
 
 					gameState = new GameState(gameState.getLevel() + 1,
 							gameState.getScore(),
@@ -203,10 +209,17 @@ public final class Core {
 							gameState.getLevelsCompletedRun(),
                             gameState.getCoinsCollected());
 
-					gameState = offerCashOut(gameState, width, height);
+					if (endless) {
+						// Cards (GOG-9), shards (GOG-10) etc. hook in here.
+						if (clearedAlive)
+							gameState = EndlessMode.fireLevelCleared(
+									gameState, clearedLevel);
+					} else {
+						gameState = offerCashOut(gameState, width, height);
+					}
 
 				} while (gameState.getLivesRemaining() > 0
-						&& gameState.getLevel() <= NUM_LEVELS);
+						&& (endless || gameState.getLevel() <= NUM_LEVELS));
 
 				gameState = settlePendingDiamonds(gameState);
 
