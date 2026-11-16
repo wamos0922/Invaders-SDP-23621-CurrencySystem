@@ -20,6 +20,7 @@ import engine.Cooldown;
 import engine.Core;
 import engine.DrawManager;
 import engine.CurrencyManager;
+import engine.EndlessMode;
 import engine.GameSettings;
 import engine.GameState;
 import engine.Achievement;
@@ -361,8 +362,10 @@ public class GameScreen extends Screen {
 		this.ship = new Ship(this.width / 2, this.height - 30,
 				Core.getSelectedShipType());
 
-		// Distinct mid-boss and final boss encounters.
-		if (this.level == 5 || this.level == 10) {
+		// Distinct mid-boss and final boss encounters (story mode only;
+		// endless waves are always formations for now, GOG-7).
+		if (!EndlessMode.isEnabled()
+				&& (this.level == 5 || this.level == 10)) {
 			this.midBoss = this.level == 5
 					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
 					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
@@ -616,14 +619,17 @@ public class GameScreen extends Screen {
 						.recordLevelCompleted(this.level));
                 showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
 
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(
-								this.level,
-								Core.getShipId(this.ship.getType()),
-								true));
+				// Level 10 / game won only count in story mode (GOG-7).
+				if (!EndlessMode.isEnabled())
+					showUnlockedAchievement(Core.getAchievementManager()
+							.recordLevelCompleted(
+									this.level,
+									Core.getShipId(this.ship.getType()),
+									true));
 
 				// Last level cleared alive: the game is beaten.
-				if (this.level == Core.getNumLevels())
+				if (!EndlessMode.isEnabled()
+						&& this.level == Core.getNumLevels())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordGameWon(Core.getSelectedShipId()));
 			}
@@ -1076,9 +1082,10 @@ public class GameScreen extends Screen {
 					}
 				}
 			} else {
-				if (this.level == 5 || this.level == 10) {
-					if (this.midBoss != null
-							&& !this.midBoss.isDestroyed()
+				// Boss stages are the ones that actually spawned a boss, so
+				// endless waves 5 and 10 hit their formation (GOG-7).
+				if (this.midBoss != null) {
+					if (!this.midBoss.isDestroyed()
 							&& checkCollision(bullet, (Entity) this.midBoss)) {
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
 						if (this.midBoss.isDestroyed()) {
