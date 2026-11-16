@@ -14,6 +14,27 @@ public class StoryPanel extends JPanel {
     private static final int TYPING_DELAY = 35;
     private static final int SOUND_INTERVAL = 2;
 
+    private static final int TITLE_FONT_SIZE = 25;
+    private static final int PANEL_FONT_SIZE = 17;
+    private static final int SPEAKER_FONT_SIZE = 19;
+    private static final int DIALOGUE_FONT_SIZE = 17;
+    private static final int HINT_FONT_SIZE = 13;
+    private static final int LINE_SPACING = 23;
+
+    // Space Invaders green theme.
+    private static final Color BACKGROUND =
+            new Color(8, 24, 13);
+    private static final Color DIALOGUE_BOX =
+            new Color(5, 38, 17);
+    private static final Color PORTRAIT_BACKGROUND =
+            new Color(24, 75, 38);
+    private static final Color ACCENT =
+            new Color(125, 255, 145);
+    private static final Color TEXT =
+            new Color(235, 255, 235);
+    private static final Color SECONDARY_TEXT =
+            new Color(175, 210, 180);
+
     private final int lastPanel;
     private final Runnable onFinished;
     private final Timer typingTimer;
@@ -41,11 +62,11 @@ public class StoryPanel extends JPanel {
         this.onFinished = onFinished;
 
         setPreferredSize(new Dimension(448, 520));
-        setBackground(new Color(15, 20, 35));
+        setBackground(BACKGROUND);
         setFocusable(true);
 
-        typingTimer = new Timer(TYPING_DELAY,
-                e -> updateTyping());
+        typingTimer = new Timer(
+                TYPING_DELAY, e -> updateTyping());
 
         loadTypingSound();
         loadPanel(firstPanel);
@@ -62,19 +83,23 @@ public class StoryPanel extends JPanel {
             typingSound.open(stream);
         } catch (Exception e) {
             System.err.println(
-                    "Typing sound unavailable: " + e.getMessage());
+                    "Typing sound unavailable: "
+                            + e.getMessage());
         }
     }
 
     private void playSound() {
         if (typingSound == null) return;
+
         typingSound.stop();
         typingSound.setFramePosition(0);
         typingSound.start();
     }
 
     private void stopSound() {
-        if (typingSound != null) typingSound.stop();
+        if (typingSound != null) {
+            typingSound.stop();
+        }
     }
 
     private void bindKey(String key, String name) {
@@ -90,7 +115,9 @@ public class StoryPanel extends JPanel {
     }
 
     private void loadPanel(int number) throws IOException {
-        List<Dialogue> dialogues = StoryData.loadPanel(number);
+        List<Dialogue> dialogues =
+                StoryData.loadPanel(number);
+
         panelNumber = number;
         dialogueManager = new DialogueManager(dialogues);
         startTyping();
@@ -99,17 +126,20 @@ public class StoryPanel extends JPanel {
     private void startTyping() {
         typingTimer.stop();
         stopSound();
+
         visibleCharacters = 0;
         lettersSinceSound = 0;
 
         if (dialogueManager.getCurrentDialogue() != null) {
             typingTimer.start();
         }
+
         repaint();
     }
 
     private void updateTyping() {
-        Dialogue current = dialogueManager.getCurrentDialogue();
+        Dialogue current =
+                dialogueManager.getCurrentDialogue();
 
         if (current == null) {
             typingTimer.stop();
@@ -121,8 +151,10 @@ public class StoryPanel extends JPanel {
 
         if (visibleCharacters < text.length()) {
             char letter = text.charAt(visibleCharacters++);
+
             if (Character.isLetterOrDigit(letter)) {
                 lettersSinceSound++;
+
                 if (lettersSinceSound >= SOUND_INTERVAL) {
                     playSound();
                     lettersSinceSound = 0;
@@ -141,10 +173,11 @@ public class StoryPanel extends JPanel {
     private void advance() {
         if (finished) return;
 
-        Dialogue current = dialogueManager.getCurrentDialogue();
+        Dialogue current =
+                dialogueManager.getCurrentDialogue();
+
         if (current == null) return;
 
-        // First press reveals the complete sentence.
         if (visibleCharacters < current.getText().length()) {
             visibleCharacters = current.getText().length();
             typingTimer.stop();
@@ -153,7 +186,6 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // Next press advances the dialogue.
         dialogueManager.advanceDialogue();
 
         if (!dialogueManager.isFinished()) {
@@ -161,23 +193,27 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // Advance to the next story panel.
         if (panelNumber < lastPanel) {
             try {
                 loadPanel(panelNumber + 1);
             } catch (IOException e) {
                 typingTimer.stop();
                 stopSound();
-                JOptionPane.showMessageDialog(this,
-                        "Story loading error: " + e.getMessage());
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Story loading error: "
+                                + e.getMessage());
             }
             return;
         }
 
-        // Entire panel range is complete.
         finished = true;
         close();
-        if (onFinished != null) onFinished.run();
+
+        if (onFinished != null) {
+            onFinished.run();
+        }
     }
 
     @Override
@@ -185,77 +221,136 @@ public class StoryPanel extends JPanel {
         super.paintComponent(graphics);
 
         Graphics2D g = (Graphics2D) graphics.create();
+
+        g.setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
         int w = getWidth();
         int h = getHeight();
 
-        // Placeholder background for future artwork.
-        g.setColor(new Color(22, 30, 50));
+        // Background.
+        g.setColor(BACKGROUND);
         g.fillRect(0, 0, w, h);
 
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("SansSerif", Font.BOLD, 22));
-        g.drawString("STORY MODE", 20, 40);
+        // Decorative green border.
+        g.setColor(new Color(40, 105, 55));
+        g.drawRoundRect(
+                10, 10, w - 21, h - 21, 12, 12);
 
-        g.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        g.drawString("Panel " + panelNumber + " / 33", 20, 68);
+        // Story title.
+        g.setColor(ACCENT);
+        g.setFont(new Font(
+                "SansSerif", Font.BOLD, TITLE_FONT_SIZE));
+        g.drawString("STORY MODE", 20, 43);
 
-        int boxY = h - 210;
-        g.setColor(new Color(5, 10, 20));
-        g.fillRoundRect(15, boxY, w - 30, 195, 15, 15);
+        // Panel number.
+        g.setColor(SECONDARY_TEXT);
+        g.setFont(new Font(
+                "SansSerif", Font.PLAIN, PANEL_FONT_SIZE));
+        g.drawString(
+                "Panel " + panelNumber + " / 33",
+                20, 73);
 
-        Dialogue current = dialogueManager.getCurrentDialogue();
+        // Dialogue box.
+        int boxY = h - 230;
+        int boxHeight = 215;
+
+        g.setColor(DIALOGUE_BOX);
+        g.fillRoundRect(
+                15, boxY, w - 30, boxHeight, 15, 15);
+
+        g.setColor(new Color(50, 120, 65));
+        g.drawRoundRect(
+                15, boxY, w - 31, boxHeight - 1, 15, 15);
+
+        Dialogue current =
+                dialogueManager.getCurrentDialogue();
 
         if (current != null) {
-            boolean narration = current.getType()
-                    == Dialogue.DialogueType.NARRATION;
+            boolean narration =
+                    current.getType()
+                            == Dialogue.DialogueType.NARRATION;
 
             int textX = 30;
 
             if (!narration) {
-                // Placeholder character portrait.
-                g.setColor(new Color(40, 55, 75));
-                g.fillRoundRect(25, boxY + 20, 90, 110, 8, 8);
-                g.setColor(Color.LIGHT_GRAY);
-                g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-                g.drawString("Portrait", 43, boxY + 75);
+                // Placeholder for future character artwork.
+                g.setColor(PORTRAIT_BACKGROUND);
+                g.fillRoundRect(
+                        25, boxY + 20, 90, 110, 8, 8);
+
+                g.setColor(SECONDARY_TEXT);
+                g.setFont(new Font(
+                        "SansSerif", Font.PLAIN, 13));
+                g.drawString(
+                        "Portrait", 43, boxY + 75);
+
                 textX = 130;
             }
 
-            g.setColor(Color.CYAN);
-            g.setFont(new Font("SansSerif", Font.BOLD, 17));
-            g.drawString(current.getSpeaker(), textX, boxY + 30);
+            // Speaker name.
+            g.setColor(ACCENT);
+            g.setFont(new Font(
+                    "SansSerif", Font.BOLD,
+                    SPEAKER_FONT_SIZE));
+            g.drawString(
+                    current.getSpeaker(),
+                    textX, boxY + 33);
 
-            g.setColor(Color.WHITE);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 14));
+            // Dialogue.
+            g.setColor(TEXT);
+            g.setFont(new Font(
+                    "SansSerif", Font.PLAIN,
+                    DIALOGUE_FONT_SIZE));
 
             String fullText = current.getText();
             String visibleText = fullText.substring(
-                    0, Math.min(visibleCharacters, fullText.length()));
+                    0,
+                    Math.min(
+                            visibleCharacters,
+                            fullText.length()));
 
-            drawWrappedText(g, visibleText, textX,
-                    boxY + 55, w - textX - 25);
+            drawWrappedText(
+                    g,
+                    visibleText,
+                    textX,
+                    boxY + 63,
+                    w - textX - 25);
         }
 
-        g.setColor(Color.LIGHT_GRAY);
-        g.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        g.drawString("SPACE / ENTER - Continue", 25, h - 25);
+        // Continue hint.
+        g.setColor(SECONDARY_TEXT);
+        g.setFont(new Font(
+                "SansSerif", Font.PLAIN, HINT_FONT_SIZE));
+
+        g.drawString(
+                "SPACE / ENTER - Continue",
+                25, h - 25);
 
         g.dispose();
     }
 
-    private void drawWrappedText(Graphics2D g, String text,
-                                 int x, int y, int maxWidth) {
+    private void drawWrappedText(
+            Graphics2D g,
+            String text,
+            int x,
+            int y,
+            int maxWidth) {
+
         FontMetrics metrics = g.getFontMetrics();
         StringBuilder line = new StringBuilder();
 
         for (String word : text.split("\\s+")) {
-            String candidate = line.length() == 0
-                    ? word : line + " " + word;
+            String candidate =
+                    line.length() == 0
+                            ? word
+                            : line + " " + word;
 
             if (metrics.stringWidth(candidate) > maxWidth
                     && line.length() > 0) {
                 g.drawString(line.toString(), x, y);
-                y += 19;
+                y += LINE_SPACING;
                 line = new StringBuilder(word);
             } else {
                 line = new StringBuilder(candidate);
@@ -269,6 +364,7 @@ public class StoryPanel extends JPanel {
 
     public void close() {
         typingTimer.stop();
+
         if (typingSound != null) {
             typingSound.stop();
             typingSound.close();
@@ -276,19 +372,23 @@ public class StoryPanel extends JPanel {
         }
     }
 
-    // Allows testing the prologue independently.
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                JFrame window = new JFrame("Story Test");
-                StoryPanel panel = new StoryPanel(
-                        1, 5, window::dispose);
+                JFrame window =
+                        new JFrame("Story Test");
+
+                StoryPanel panel =
+                        new StoryPanel(
+                                1, 5, window::dispose);
 
                 window.setDefaultCloseOperation(
                         JFrame.DISPOSE_ON_CLOSE);
+
                 window.setContentPane(panel);
                 window.pack();
                 window.setLocationRelativeTo(null);
+
                 window.addWindowListener(
                         new java.awt.event.WindowAdapter() {
                             @Override
@@ -297,7 +397,9 @@ public class StoryPanel extends JPanel {
                                 panel.close();
                             }
                         });
+
                 window.setVisible(true);
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
