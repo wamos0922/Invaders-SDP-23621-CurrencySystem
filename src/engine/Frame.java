@@ -61,10 +61,11 @@ public class Frame extends JFrame {
 		this.height = height - insets.top + insets.bottom;
 
 		// Enlarge the window; screens still see the original logical size.
-		int contentW = width - insets.left - insets.right;
-		int contentH = height - insets.top - insets.bottom;
-		setSize((int) Math.round(contentW * scale) + insets.left + insets.right,
-				(int) Math.round(contentH * scale) + insets.top + insets.bottom);
+		// Size it from the canvas the screens draw on (this.width x
+		// this.height), so the bottom rows are not cut off by the window
+		// border (GOG-12).
+		setSize((int) Math.round(this.width * scale) + insets.left + insets.right,
+				(int) Math.round(this.height * scale) + insets.top + insets.bottom);
 		setLocationRelativeTo(null);
 		setTitle("Invaders");
 
