@@ -227,11 +227,9 @@ public class AchievementsScreen extends Screen {
 		}
 		if (this.scrollOffset + getRowCount()
 				< this.pages.get(this.currentPage).size()) {
-			this.drawManager.drawRegularString(
-					" ------  MORE ACHIEVEMENT BELOW  ------",
-					TEXT_X,
-					430,
-					MUTED);
+			// Centred so it stays on screen at any width (GOG-12).
+			this.drawManager.drawCenteredRegularString(this,
+					"------  MORE ACHIEVEMENT BELOW  ------", 430, MUTED);
 		}
 
 
@@ -279,13 +277,15 @@ public class AchievementsScreen extends Screen {
 				achievement.getName(),
 				TEXT_X, positionY + 8, nameColor);
 
-		this.drawManager.drawRegularString(
+		// Long descriptions shrink to fit the screen width (GOG-12).
+		this.drawManager.drawRegularStringFitted(
 				manager.getRequirementText(achievement),
-				TEXT_X, positionY + 24, MUTED);
+				TEXT_X, positionY + 24, MUTED,
+				this.getWidth() - TEXT_X - 8);
 
 		this.drawManager.drawRegularString(
 				manager.getProgressText(achievement),
 				STATUS_X, positionY + 8,
 				achievement.isUnlocked() ? SELECTED : MUTED);
 	}
-}
+}

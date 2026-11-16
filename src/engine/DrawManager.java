@@ -448,6 +448,44 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws regular text that must not run past a given width. Text that
+	 * fits is drawn exactly like drawRegularString; longer text is drawn
+	 * with a smaller font so it fits (GOG-12).
+	 *
+	 * @param string
+	 *            Text to draw.
+	 * @param positionX
+	 *            Left side of the text.
+	 * @param positionY
+	 *            Baseline of the text.
+	 * @param color
+	 *            Text color.
+	 * @param maxWidth
+	 *            Widest the text may be, in pixels.
+	 */
+	public void drawRegularStringFitted(final String string,
+			final int positionX, final int positionY, final Color color,
+			final int maxWidth) {
+		int textWidth = fontRegularMetrics.stringWidth(string);
+		if (textWidth <= maxWidth || maxWidth <= 0) {
+			drawRegularString(string, positionX, positionY, color);
+			return;
+		}
+		// The pixel font only shrinks in whole sizes (13.5 draws like 14),
+		// so step down one size at a time until the text fits.
+		Font fitted = fontRegular;
+		float size = (float) Math.floor(fontRegular.getSize2D());
+		while (size > 6f && backBufferGraphics.getFontMetrics(fitted)
+				.stringWidth(string) > maxWidth) {
+			size -= 1f;
+			fitted = fontRegular.deriveFont(size);
+		}
+		backBufferGraphics.setFont(fitted);
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.drawString(string, positionX, positionY);
+	}
+
+	/**
 	 * Draws an empty rectangle outline.
 	 *
 	 * @param positionX Horizontal position of the left edge.
@@ -1099,6 +1137,7 @@ public final class DrawManager {
 		g.setFont(fontRegular);
 		g.setColor(Color.GRAY);
 		drawCenteredRegularString(screen, "BY GOG", lastBaseline + 28);
+		titleBottomBaseline = lastBaseline + 28;
 	}
 
 	/** Cached title font and the screen width it was sized for. */
@@ -1108,6 +1147,8 @@ public final class DrawManager {
 	private static final float TITLE_WIDTH_RATIO = 0.98f;
 	/** Gap above the title, in pixels. */
 	private static final int TITLE_TOP = 36;
+	/** Baseline of the "BY GOG" line, set by drawTitle; 0 until drawn. */
+	private int titleBottomBaseline = 0;
 	/** Time the shine takes to cross the title. */
 	private static final long TITLE_SHINE_SWEEP_MS = 450;
 	/** Time between the start of two shines. */
@@ -1153,7 +1194,7 @@ public final class DrawManager {
 	public MenuItem menuItemAt(final Screen screen, final int positionY) {
 		if (fontRegularMetrics == null)
 			return null;
-		int spacing = menuItemSpacing();
+		int spacing = mainMenuSpacing(screen);
 		for (MenuItem item : MenuItem.values()) {
 			if (isOnMenuRow(menuItemBaseline(screen, item.ordinal()),
 					spacing, positionY))
@@ -1198,7 +1239,67 @@ public final class DrawManager {
 	 * @return Baseline of the item's text.
 	 */
 	private int menuItemBaseline(final Screen screen, final int index) {
-		return screen.getHeight() / 2 + menuItemSpacing() * (index + 2);
+		int spacing = mainMenuSpacing(screen);
+		int first = screen.getHeight() / 2 + menuItemSpacing() * 2;
+		int count = MenuItem.values().length;
+		int last = lastMenuBaseline(screen);
+		// Too many items to fit above the key hints (GOG-12): start the
+		// menu higher, but never above the "BY GOG" line.
+		if (first + spacing * (count - 1) > last)
+			first = Math.max(firstMenuBaselineLimit(screen),
+					last - spacing * (count - 1));
+		return first + spacing * index;
+	}
+
+	/**
+	 * Distance between two main-menu items. Normally the usual spacing;
+	 * squeezed (down to one text line) when the menu would otherwise run
+	 * into the key hints at the bottom of the screen (GOG-12).
+	 *
+	 * @param screen
+	 *            Screen the menu is drawn on.
+	 * @return Spacing, in pixels.
+	 */
+	private int mainMenuSpacing(final Screen screen) {
+		int spacing = menuItemSpacing();
+		int count = MenuItem.values().length;
+		if (count < 2)
+			return spacing;
+		int first = screen.getHeight() / 2 + spacing * 2;
+		int last = lastMenuBaseline(screen);
+		if (first + spacing * (count - 1) <= last)
+			return spacing;
+		int room = last - firstMenuBaselineLimit(screen);
+		return Math.max(fontRegularMetrics.getHeight(),
+				Math.min(spacing, room / (count - 1)));
+	}
+
+	/**
+	 * Lowest baseline the last menu item may use: one and a half lines
+	 * above the key hints drawn by drawKeyHints.
+	 *
+	 * @param screen
+	 *            Screen the menu is drawn on.
+	 * @return Baseline, in pixels.
+	 */
+	private int lastMenuBaseline(final Screen screen) {
+		int hints = screen.getHeight() - fontRegularMetrics.getHeight() * 2;
+		return hints - fontRegularMetrics.getHeight() * 3 / 2;
+	}
+
+	/**
+	 * Highest baseline the first menu item may use: one and a half lines
+	 * below the "BY GOG" line, or the middle of the screen if the title
+	 * has not been drawn yet.
+	 *
+	 * @param screen
+	 *            Screen the menu is drawn on.
+	 * @return Baseline, in pixels.
+	 */
+	private int firstMenuBaselineLimit(final Screen screen) {
+		if (titleBottomBaseline <= 0)
+			return screen.getHeight() / 2;
+		return titleBottomBaseline + fontRegularMetrics.getHeight() * 3 / 2;
 	}
 
 	/**
@@ -1688,6 +1789,24 @@ public final class DrawManager {
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.drawString(string, screen.getWidth() / 2
 				- fontRegularMetrics.stringWidth(string) / 2, height);
+	}
+
+	/**
+	 * Draws regular text centred horizontally, in a given colour.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param string
+	 *            Text to draw.
+	 * @param height
+	 *            Baseline of the text.
+	 * @param color
+	 *            Text colour.
+	 */
+	public void drawCenteredRegularString(final Screen screen,
+			final String string, final int height, final Color color) {
+		backBufferGraphics.setColor(color);
+		drawCenteredRegularString(screen, string, height);
 	}
 
 	/**
