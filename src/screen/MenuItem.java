@@ -1,123 +1,30 @@
 package screen;
 
-/**
- * Items of the main menu.
- *
- * The order of the constants is the order they are drawn in. The code is the
- * value TitleScreen returns to Core, which decides the next screen - the two
- * are independent, so an item can be moved on screen without changing its
- * code, and Exit can stay last while keeping code 0.
- *
- * To add a screen, add one line here with an unused code, plus a Core case
- * for that code and the Screen class. An item with enabled set to false is
- * drawn dark grey and cannot be chosen.
- */
+/** Main-menu entries. */
 public enum MenuItem {
+	MAIN_STORY("Story",2,true),
+	ENDLESS("Endless game",8,true),
+	SHIP_SELECT("Customize",7,true),
+	SHOP("Shop",5,true),
+	ACHIEVEMENTS("Achievements",6,true),
+	HIGH_SCORES("High scores",3,true),
+	SETTINGS("Settings",4,true),
+	EXIT("Exit",0,true);
 
-	/** Starts the main story (levels 1 to 10, with bosses). */
-	MAIN_STORY("Main story", 2, true),
-	/** Starts endless mode (GOG-13): waves until the player is out of lives. */
-	ENDLESS("Endless game", 8, true),
-	/** Customize screen (ship selection). */
-	SHIP_SELECT("Customize", 7, true),
-	/** Shop screen. */
-	SHOP("Shop", 5, true),
-	/** Achievements screen. */
-	ACHIEVEMENTS("Achievements", 6, true),
-	/** Shows the high score table. */
-	HIGH_SCORES("High scores", 3, true),
-	/** Settings screen. */
-	SETTINGS("Settings", 4, true),
-	/** Closes the game. */
-	EXIT("Exit", 0, true);
-
-	/** Text drawn on the menu. */
 	private final String title;
-	/** Value returned to Core to open the associated screen. */
 	private final int code;
-	/** Whether the associated screen exists yet. */
 	private final boolean enabled;
-
-	/**
-	 * Constructor, establishes the properties of the item.
-	 *
-	 * @param title
-	 *            Text drawn on the menu.
-	 * @param code
-	 *            Value returned to Core when the item is chosen.
-	 * @param enabled
-	 *            False while the associated screen does not exist yet.
-	 */
-	MenuItem(final String title, final int code, final boolean enabled) {
-		this.title = title;
-		this.code = code;
-		this.enabled = enabled;
+	MenuItem(String title,int code,boolean enabled) {
+		this.title=title;this.code=code;this.enabled=enabled;
 	}
-
-	/**
-	 * Getter for the text drawn on the menu.
-	 *
-	 * @return Text of the item.
-	 */
-	public final String getTitle() {
-		return this.title;
-	}
-
-	/**
-	 * Getter for the code returned to Core.
-	 *
-	 * @return Code of the item.
-	 */
-	public final int getCode() {
-		return this.code;
-	}
-
-	/**
-	 * Checks whether the screen behind the item exists.
-	 *
-	 * @return True if the item can be selected.
-	 */
-	public final boolean isEnabled() {
-		return this.enabled;
-	}
-
-	/**
-	 * Item the cursor starts on.
-	 *
-	 * @return Topmost item.
-	 */
-	public static MenuItem first() {
-		return values()[0];
-	}
-
-	/**
-	 * Item below this one. Items without a screen are not skipped - the cursor
-	 * stops on them, they just cannot be chosen.
-	 *
-	 * @return Item below, wrapping around to the top.
-	 */
-	public final MenuItem next() {
-		return step(1);
-	}
-
-	/**
-	 * Item above this one.
-	 *
-	 * @return Item above, wrapping around to the bottom.
-	 */
-	public final MenuItem previous() {
-		return step(-1);
-	}
-
-	/**
-	 * Moves one place along the list, wrapping around at both ends.
-	 *
-	 * @param direction
-	 *            1 to move down, -1 to move up.
-	 * @return Item one place away in that direction.
-	 */
-	private MenuItem step(final int direction) {
-		MenuItem[] items = values();
-		return items[Math.floorMod(this.ordinal() + direction, items.length)];
+	public String getTitle() { return title; }
+	public int getCode() { return code; }
+	public boolean isEnabled() { return enabled; }
+	public static MenuItem first() { return values()[0]; }
+	public MenuItem next() { return step(1); }
+	public MenuItem previous() { return step(-1); }
+	private MenuItem step(int direction) {
+		MenuItem[] items=values();
+		return items[Math.floorMod(ordinal()+direction,items.length)];
 	}
 }
