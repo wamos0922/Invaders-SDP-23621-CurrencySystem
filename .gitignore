@@ -205,3 +205,4 @@ diamonds.tmp
 
 # Local player stamina save data
 stamina.properties
+/stamina-diamond-transaction.properties

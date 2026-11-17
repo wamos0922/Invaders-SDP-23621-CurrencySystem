@@ -31,7 +31,6 @@ public final class StaminaManager {
         this.lastUpdateTime = FileManager.getInstance()
                 .loadStaminaTimestamp(now);
         updateRegeneration(now);
-        save();
     }
 
     /**
@@ -93,10 +92,14 @@ public final class StaminaManager {
         updateRegeneration(System.currentTimeMillis());
         if (this.stamina < RUN_COST)
             return false;
-        if (this.stamina == MAX_STAMINA)
-            this.lastUpdateTime = System.currentTimeMillis();
-        this.stamina -= RUN_COST;
-        save();
+        long now = System.currentTimeMillis();
+        long updatedTimestamp = this.stamina == MAX_STAMINA
+                ? now : this.lastUpdateTime;
+        int updatedStamina = this.stamina - RUN_COST;
+        if (!save(updatedStamina, updatedTimestamp))
+            return false;
+        this.stamina = updatedStamina;
+        this.lastUpdateTime = updatedTimestamp;
         return true;
     }
 
@@ -110,11 +113,12 @@ public final class StaminaManager {
         updateRegeneration(System.currentTimeMillis());
         if (this.stamina >= MAX_STAMINA)
             return false;
-        if (!DiamondManager.getInstance().trySpend(1))
+        long now = System.currentTimeMillis();
+        if (!DiamondManager.getInstance().trySpendForStaminaRefill(
+                MAX_STAMINA, now))
             return false;
         this.stamina = MAX_STAMINA;
-        this.lastUpdateTime = System.currentTimeMillis();
-        save();
+        this.lastUpdateTime = now;
         return true;
     }
 
@@ -127,9 +131,12 @@ public final class StaminaManager {
      */
     public synchronized void setStaminaForTester(final int value) {
         requireTesterMode();
-        this.stamina = Math.max(0, Math.min(MAX_STAMINA, value));
-        this.lastUpdateTime = System.currentTimeMillis();
-        save();
+        int updatedStamina = Math.max(0, Math.min(MAX_STAMINA, value));
+        long now = System.currentTimeMillis();
+        if (!save(updatedStamina, now))
+            throw new IllegalStateException("Could not persist tester stamina");
+        this.stamina = updatedStamina;
+        this.lastUpdateTime = now;
     }
 
     /**
@@ -148,9 +155,16 @@ public final class StaminaManager {
                     "elapsedMillis must not be negative");
         if (this.stamina >= MAX_STAMINA || elapsedMillis == 0L)
             return;
-        this.lastUpdateTime = calculateSimulatedTimestamp(
+        long simulatedTimestamp = calculateSimulatedTimestamp(
                 this.lastUpdateTime, elapsedMillis);
-        updateRegeneration(System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        long[] result = calculateRegeneration(this.stamina,
+                simulatedTimestamp, now);
+        int updatedStamina = (int) result[0];
+        if (save(updatedStamina, result[1])) {
+            this.stamina = updatedStamina;
+            this.lastUpdateTime = result[1];
+        }
     }
 
     /**
@@ -179,10 +193,10 @@ public final class StaminaManager {
                 this.lastUpdateTime, now);
         boolean changed = result[0] != this.stamina
                 || result[1] != this.lastUpdateTime;
+        if (changed && !save((int) result[0], result[1]))
+            return;
         this.stamina = (int) result[0];
         this.lastUpdateTime = result[1];
-        if (changed)
-            save();
     }
 
     /**
@@ -225,8 +239,11 @@ public final class StaminaManager {
     }
 
     /** Persists stamina and its regeneration reference time together. */
-    private void save() {
-        FileManager.getInstance().saveStamina(this.stamina,
-                this.lastUpdateTime);
+    private boolean save(final int stamina, final long timestamp) {
+        return FileManager.getInstance().saveStamina(stamina, timestamp);
+    }
+
+    static void resetInstanceForTests() {
+        instance = null;
     }
 }

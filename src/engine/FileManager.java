@@ -51,6 +51,9 @@ public final class FileManager {
 	private static final String DIAMONDS_FILE = "diamonds";
 	/** Name of the file containing the player's stamina and regen timestamp. */
 	private static final String STAMINA_FILE = "stamina.properties";
+	/** Journal that makes stamina refills atomic across both save files. */
+	private static final String RESOURCE_TRANSACTION_FILE =
+			"stamina-diamond-transaction.properties";
 	/** Default shared font, relative to res/ or src/. */
 	public static final String DEFAULT_FONT = "silkscreen/Silkscreen-Regular.ttf";
 	/** Folder checked for fonts that are not on the classpath. */
@@ -70,6 +73,10 @@ public final class FileManager {
 	 *
 	 * @return Shared instance of FileManager.
 	 */
+	static void resetInstanceForTests() {
+		instance = null;
+	}
+
 	protected static FileManager getInstance() {
 		if (instance == null)
 			instance = new FileManager();
@@ -483,8 +490,10 @@ public final class FileManager {
 	 * @param diamonds
 	 *            Current diamond balance to persist.
 	 */
-	public void saveDiamonds(final int diamonds) {
-		saveBalance(DIAMONDS_FILE, diamonds, "diamond");
+	public boolean saveDiamonds(final int diamonds) {
+		if (!recoverPendingResourceTransaction())
+			return false;
+		return saveBalance(DIAMONDS_FILE, diamonds, "diamond");
 	}
 
 	/**
@@ -524,17 +533,53 @@ public final class FileManager {
 	 * @param stamina Current stamina value.
 	 * @param timestamp Last regeneration reference time in milliseconds.
 	 */
-	public void saveStamina(final int stamina, final long timestamp) {
+	public boolean saveStamina(final int stamina, final long timestamp) {
+		if (!recoverPendingResourceTransaction())
+			return false;
+		Properties properties = new Properties();
+		properties.setProperty("currentStamina", Integer.toString(
+				Math.max(0, stamina)));
+		properties.setProperty("lastUpdateTime", Long.toString(timestamp));
+		return saveProperties(STAMINA_FILE, properties, "stamina");
+	}
+
+	/**
+	 * Commits a stamina refill and its diamond charge as one recoverable
+	 * transaction. The journal is written atomically before either balance is
+	 * changed, so a crash between the two save-file updates cannot lose the
+	 * refill or the diamond charge.
+	 *
+	 * @return true once the transaction journal is safely persisted.
+	 */
+	public boolean saveStaminaAndDiamonds(final int stamina,
+			final long timestamp, final int diamonds) {
+		if (!recoverPendingResourceTransaction())
+			return false;
+		Properties transaction = new Properties();
+		transaction.setProperty("currentStamina", Integer.toString(
+				Math.max(0, stamina)));
+		transaction.setProperty("lastUpdateTime", Long.toString(timestamp));
+		transaction.setProperty("diamonds", Integer.toString(
+				Math.max(0, diamonds)));
+		if (!saveProperties(RESOURCE_TRANSACTION_FILE, transaction,
+				"stamina/diamond transaction"))
+			return false;
+		// The journal is authoritative from this point. Applying the individual
+		// files is best-effort and will be retried on the next load or save.
+		if (!applyResourceTransaction(transaction))
+			logger.warning("Stamina/diamond transaction is journaled and will be recovered later.");
+		return true;
+	}
+
+	/** Writes a properties save through a temporary file and atomic replace. */
+	private boolean saveProperties(final String fileName,
+			final Properties properties, final String label) {
 		OutputStream outputStream = null;
 		try {
-			File saveFile = getSaveFile(STAMINA_FILE);
-			File tempFile = getSaveFile(STAMINA_FILE + ".tmp");
-			Properties properties = new Properties();
-			properties.setProperty("currentStamina", Integer.toString(
-					Math.max(0, stamina)));
-			properties.setProperty("lastUpdateTime", Long.toString(timestamp));
+			File saveFile = getSaveFile(fileName);
+			File tempFile = getSaveFile(fileName + ".tmp");
 			outputStream = new FileOutputStream(tempFile);
-			properties.store(outputStream, "Space Invaders stamina");
+			properties.store(outputStream, "Space Invaders " + label);
 			outputStream.close();
 			outputStream = null;
 			try {
@@ -545,14 +590,16 @@ public final class FileManager {
 				Files.move(tempFile.toPath(), saveFile.toPath(),
 						StandardCopyOption.REPLACE_EXISTING);
 			}
+			return true;
 		} catch (IOException e) {
-			logger.warning("Couldn't save stamina: " + e.getMessage());
+			logger.warning("Couldn't save " + label + ": " + e.getMessage());
+			return false;
 		} finally {
 			if (outputStream != null) {
 				try {
 					outputStream.close();
 				} catch (IOException e) {
-					// Nothing else to do if closing fails.
+					// Preserve the original save result.
 				}
 			}
 		}
@@ -565,6 +612,9 @@ public final class FileManager {
 	 * @return Loaded stamina properties, or an empty set.
 	 */
 	private Properties loadStaminaProperties() {
+		Properties transaction = loadPendingResourceTransaction();
+		if (isCompleteResourceTransaction(transaction))
+			return transaction;
 		Properties properties = new Properties();
 		InputStream inputStream = null;
 		try {
@@ -587,6 +637,72 @@ public final class FileManager {
 		return properties;
 	}
 
+	/** Reads the pending refill journal, or null when no journal exists. */
+	private Properties loadPendingResourceTransaction() {
+		InputStream inputStream = null;
+		try {
+			File journal = getSaveFile(RESOURCE_TRANSACTION_FILE);
+			if (!journal.exists())
+				return null;
+			if (!journal.isFile())
+				return new Properties();
+			Properties properties = new Properties();
+			inputStream = new FileInputStream(journal);
+			properties.load(inputStream);
+			return properties;
+		} catch (IOException e) {
+			logger.warning("Couldn't read stamina/diamond transaction: "
+					+ e.getMessage());
+			return new Properties();
+		} finally {
+			if (inputStream != null) {
+				try {
+					inputStream.close();
+				} catch (IOException e) {
+					// Nothing else to do.
+				}
+			}
+		}
+	}
+
+	private boolean isCompleteResourceTransaction(final Properties transaction) {
+		return transaction != null && transaction.containsKey("currentStamina")
+				&& transaction.containsKey("lastUpdateTime")
+				&& transaction.containsKey("diamonds");
+	}
+
+	/** Retries a journaled refill before allowing an independent resource save. */
+	private boolean recoverPendingResourceTransaction() {
+		Properties transaction = loadPendingResourceTransaction();
+		return transaction == null || applyResourceTransaction(transaction);
+	}
+
+	/** Materializes a journal into both legacy save files, then removes it. */
+	private boolean applyResourceTransaction(final Properties transaction) {
+		try {
+			int stamina = Integer.parseInt(
+					transaction.getProperty("currentStamina", ""));
+			long timestamp = Long.parseLong(
+					transaction.getProperty("lastUpdateTime", ""));
+			int diamonds = Integer.parseInt(
+					transaction.getProperty("diamonds", ""));
+			Properties staminaProperties = new Properties();
+			staminaProperties.setProperty("currentStamina", Integer.toString(
+					Math.max(0, stamina)));
+			staminaProperties.setProperty("lastUpdateTime", Long.toString(timestamp));
+			if (!saveProperties(STAMINA_FILE, staminaProperties, "stamina"))
+				return false;
+			if (!saveBalance(DIAMONDS_FILE, Math.max(0, diamonds), "diamond"))
+				return false;
+			Files.deleteIfExists(getSaveFile(RESOURCE_TRANSACTION_FILE).toPath());
+			return true;
+		} catch (NumberFormatException | IOException e) {
+			logger.warning("Couldn't apply stamina/diamond transaction: "
+					+ e.getMessage());
+			return false;
+		}
+	}
+
 	/**
 	 * Shared implementation of loadCoins() and loadDiamonds(). Never throws:
 	 * a missing or corrupt file just means starting from zero, so the game
@@ -599,6 +715,17 @@ public final class FileManager {
 	 * @return Saved balance, never negative.
 	 */
 	private int loadBalance(final String fileName, final String label) {
+		if (DIAMONDS_FILE.equals(fileName)) {
+			Properties transaction = loadPendingResourceTransaction();
+			if (isCompleteResourceTransaction(transaction)) {
+				try {
+					return Math.max(0, Integer.parseInt(
+							transaction.getProperty("diamonds")));
+				} catch (NumberFormatException e) {
+					logger.warning("Stamina/diamond transaction journal is corrupt; using the last saved balance.");
+				}
+			}
+		}
 		BufferedReader bufferedReader = null;
 		try {
 			File balanceFile = getSaveFile(fileName);
@@ -641,7 +768,7 @@ public final class FileManager {
 	 * @param label
 	 *            Short currency label, used only for log messages.
 	 */
-	private void saveBalance(final String fileName, final int balance,
+	private boolean saveBalance(final String fileName, final int balance,
 							 final String label) {
 		BufferedWriter bufferedWriter = null;
 		try {
@@ -662,9 +789,11 @@ public final class FileManager {
 				Files.move(tempFile.toPath(), balanceFile.toPath(),
 						StandardCopyOption.REPLACE_EXISTING);
 			}
+			return true;
 		} catch (IOException e) {
 			logger.warning("Couldn't save " + label + " balance: "
 					+ e.getMessage());
+			return false;
 		} finally {
 			try {
 				if (bufferedWriter != null)
@@ -686,6 +815,10 @@ public final class FileManager {
 	 *             In case the application directory cannot be decoded.
 	 */
 	private File getSaveFile(final String fileName) throws IOException {
+		// Allows isolated persistence tests without touching a player's real save.
+		String saveDirectory = System.getProperty("game.saveDirectory");
+		if (saveDirectory != null && !saveDirectory.trim().isEmpty())
+			return new File(saveDirectory, fileName);
 		String jarPath = FileManager.class.getProtectionDomain()
 				.getCodeSource().getLocation().getPath();
 		jarPath = URLDecoder.decode(jarPath, "UTF-8");
