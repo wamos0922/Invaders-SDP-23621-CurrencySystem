@@ -361,6 +361,7 @@ public class GameScreen extends Screen {
 	/**
 	 * Initializes basic screen properties, and adds necessary elements.
 	 */
+
 	public final void initialize() {
 		super.initialize();
 		SoundManager.getInstance().playBgm(Sound.BGM_GAME);
@@ -371,9 +372,13 @@ public class GameScreen extends Screen {
 
 		// Distinct mid-boss and final boss encounters (story mode only;
 		// endless waves are always formations for now, GOG-7).
+		// GOG-24: Reuse the existing Level 5 miniboss and Level 10
+		// final boss every 10 levels as placeholders for Ammar and Acap.
 		if (!EndlessMode.isEnabled()
-				&& (this.level == 5 || this.level == 10)) {
-			this.midBoss = this.level == 5
+				&& this.level >= 1
+				&& this.level <= 40
+				&& (this.level % 10 == 5 || this.level % 10 == 0)) {
+			this.midBoss = this.level % 10 == 5
 					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
 					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
 		} else {
@@ -415,7 +420,7 @@ public class GameScreen extends Screen {
 			this.warpIn = new engine.WarpIn();
 			this.warpIn.startLevel(INPUT_DELAY);
 		}
-		if (PurchaseManager.getInstance().isEffectOn("ghost_trail"))		// Ghost Trail, on unless switched off in Customize. AUTHORED BY: VFX TEAM (Effection)
+		if (PurchaseManager.getInstance().isEffectOn("ghost_trail"))        // Ghost Trail, on unless switched off in Customize. AUTHORED BY: VFX TEAM (Effection)
 			this.ghostTrail = new engine.GhostTrail();
 		this.coins = new HashSet<Coin>();
 		this.coinsCollectedThisLevel = 0;
@@ -440,6 +445,7 @@ public class GameScreen extends Screen {
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
 	}
+
 
 	/**
 	 * Starts the 5 s low-life effect when lives become 1. Stops on timeout
