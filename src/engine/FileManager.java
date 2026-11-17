@@ -49,6 +49,8 @@ public final class FileManager {
 	private static final String COINS_FILE = "coins";
 	/** Name of the file the player's diamond balance is persisted to. */
 	private static final String DIAMONDS_FILE = "diamonds";
+	/** Name of the file containing the player's stamina and regen timestamp. */
+	private static final String STAMINA_FILE = "stamina.properties";
 	/** Default shared font, relative to res/ or src/. */
 	public static final String DEFAULT_FONT = "silkscreen/Silkscreen-Regular.ttf";
 	/** Folder checked for fonts that are not on the classpath. */
@@ -483,6 +485,106 @@ public final class FileManager {
 	 */
 	public void saveDiamonds(final int diamonds) {
 		saveBalance(DIAMONDS_FILE, diamonds, "diamond");
+	}
+
+	/**
+	 * Loads the player's saved stamina value.
+	 *
+	 * @param defaultValue Value to use when no valid stamina save exists.
+	 * @return Saved stamina, or the supplied default.
+	 */
+	public int loadStamina(final int defaultValue) {
+		Properties properties = loadStaminaProperties();
+		try {
+			return Math.max(0, Integer.parseInt(
+					properties.getProperty("currentStamina", "")));
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	/**
+	 * Loads the timestamp used to calculate real-time stamina regeneration.
+	 *
+	 * @param defaultValue Timestamp to use when no valid save exists.
+	 * @return Saved timestamp in milliseconds since the Unix epoch.
+	 */
+	public long loadStaminaTimestamp(final long defaultValue) {
+		Properties properties = loadStaminaProperties();
+		try {
+			return Long.parseLong(properties.getProperty("lastUpdateTime", ""));
+		} catch (NumberFormatException e) {
+			return defaultValue;
+		}
+	}
+
+	/**
+	 * Saves stamina and its regeneration timestamp together.
+	 *
+	 * @param stamina Current stamina value.
+	 * @param timestamp Last regeneration reference time in milliseconds.
+	 */
+	public void saveStamina(final int stamina, final long timestamp) {
+		OutputStream outputStream = null;
+		try {
+			File saveFile = getSaveFile(STAMINA_FILE);
+			File tempFile = getSaveFile(STAMINA_FILE + ".tmp");
+			Properties properties = new Properties();
+			properties.setProperty("currentStamina", Integer.toString(
+					Math.max(0, stamina)));
+			properties.setProperty("lastUpdateTime", Long.toString(timestamp));
+			outputStream = new FileOutputStream(tempFile);
+			properties.store(outputStream, "Space Invaders stamina");
+			outputStream.close();
+			outputStream = null;
+			try {
+				Files.move(tempFile.toPath(), saveFile.toPath(),
+						StandardCopyOption.REPLACE_EXISTING,
+						StandardCopyOption.ATOMIC_MOVE);
+			} catch (AtomicMoveNotSupportedException e) {
+				Files.move(tempFile.toPath(), saveFile.toPath(),
+						StandardCopyOption.REPLACE_EXISTING);
+			}
+		} catch (IOException e) {
+			logger.warning("Couldn't save stamina: " + e.getMessage());
+		} finally {
+			if (outputStream != null) {
+				try {
+					outputStream.close();
+				} catch (IOException e) {
+					// Nothing else to do if closing fails.
+				}
+			}
+		}
+	}
+
+	/**
+	 * Reads the stamina save file. Missing or corrupt files produce empty
+	 * properties so callers can apply safe defaults.
+	 *
+	 * @return Loaded stamina properties, or an empty set.
+	 */
+	private Properties loadStaminaProperties() {
+		Properties properties = new Properties();
+		InputStream inputStream = null;
+		try {
+			File saveFile = getSaveFile(STAMINA_FILE);
+			if (!saveFile.isFile())
+				return properties;
+			inputStream = new FileInputStream(saveFile);
+			properties.load(inputStream);
+		} catch (IOException e) {
+			logger.warning("Couldn't load stamina save: " + e.getMessage());
+		} finally {
+			if (inputStream != null) {
+				try {
+					inputStream.close();
+				} catch (IOException e) {
+					// Nothing else to do if closing fails.
+				}
+			}
+		}
+		return properties;
 	}
 
 	/**
