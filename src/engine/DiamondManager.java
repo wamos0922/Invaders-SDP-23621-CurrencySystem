@@ -47,18 +47,19 @@ public final class DiamondManager {
 	 * @param amount
 	 *            Amount of diamonds to add. Ignored if not positive.
 	 */
-	public void addDiamonds(final int amount) {
+	public synchronized void addDiamonds(final int amount) {
 		if (amount <= 0)
 			return;
-		this.diamonds = (int) Math.min(Integer.MAX_VALUE,
+		int updated = (int) Math.min(Integer.MAX_VALUE,
 				(long) this.diamonds + amount);
-		save();
+		if (save(updated))
+			this.diamonds = updated;
 	}
 
 	/**
 	 * @return current diamond balance.
 	 */
-	public int getDiamonds() {
+	public synchronized int getDiamonds() {
 		return this.diamonds;
 	}
 
@@ -69,7 +70,7 @@ public final class DiamondManager {
 	 *            Price to check.
 	 * @return true if the player currently has at least that many diamonds.
 	 */
-	public boolean canAfford(final int amount) {
+	public synchronized boolean canAfford(final int amount) {
 		return amount >= 0 && this.diamonds >= amount;
 	}
 
@@ -84,13 +85,15 @@ public final class DiamondManager {
 	 *         deducted; false if funds were insufficient and nothing
 	 *         changed.
 	 */
-	public boolean trySpend(final int amount) {
+	public synchronized boolean trySpend(final int amount) {
 		if (amount <= 0)
 			throw new IllegalArgumentException("amount must be positive");
 		if (this.diamonds < amount)
 			return false;
-		this.diamonds -= amount;
-		save();
+		int updated = this.diamonds - amount;
+		if (!save(updated))
+			return false;
+		this.diamonds = updated;
 		return true;
 	}
 
@@ -102,16 +105,17 @@ public final class DiamondManager {
 	 * @throws IllegalStateException when tester mode is not enabled.
 	 * @throws IllegalArgumentException when amount is negative.
 	 */
-	public void setDiamondsForTester(final int amount) {
+	public synchronized void setDiamondsForTester(final int amount) {
 		requireTesterMode();
 		if (amount < 0)
 			throw new IllegalArgumentException("amount must not be negative");
+		if (!save(amount))
+			throw new IllegalStateException("Could not persist tester diamond balance");
 		this.diamonds = amount;
-		save();
 	}
 
 	/** Adds diamonds for local testing without changing normal reward rules. */
-	public void addDiamondsForTester(final int amount) {
+	public synchronized void addDiamondsForTester(final int amount) {
 		requireTesterMode();
 		if (amount < 0)
 			throw new IllegalArgumentException("amount must not be negative");
@@ -129,15 +133,31 @@ public final class DiamondManager {
 	 * Resets the balance to zero and persists it. Useful for tests; not
 	 * meant to be called during normal play.
 	 */
-	public void reset() {
-		this.diamonds = 0;
-		save();
+	public synchronized void reset() {
+		if (save(0))
+			this.diamonds = 0;
 	}
 
 	/**
 	 * Writes the current balance to disk.
 	 */
-	private void save() {
-		FileManager.getInstance().saveDiamonds(this.diamonds);
+	synchronized boolean trySpendForStaminaRefill(final int stamina,
+			final long timestamp) {
+		if (this.diamonds < 1)
+			return false;
+		int updated = this.diamonds - 1;
+		if (!FileManager.getInstance().saveStaminaAndDiamonds(stamina,
+				timestamp, updated))
+			return false;
+		this.diamonds = updated;
+		return true;
+	}
+
+	private boolean save(final int balance) {
+		return FileManager.getInstance().saveDiamonds(balance);
+	}
+
+	static void resetInstanceForTests() {
+		instance = null;
 	}
 }
