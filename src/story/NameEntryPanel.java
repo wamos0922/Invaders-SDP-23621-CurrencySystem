@@ -1,318 +1,519 @@
 
 package story;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.text.AbstractDocument;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.DocumentFilter;
+import screen.Planet;
+import screen.Starfield;
+import engine.soundEngine.MenuSounds;
 
+import javax.swing.*;
+import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 
 /**
- * GOG-24: In-game protagonist name entry.
- *
- * Uses the same font as the main menu.
- * Displays inside the existing game window.
+ * Main-menu styled protagonist name entry.
  */
 public class NameEntryPanel extends JPanel {
 
-    private static final Color BACKGROUND =
-            new Color(8, 24, 13);
+    private static final int WIDTH = 448;
+    private static final int HEIGHT = 520;
+    private static final int MAX_NAME_LENGTH = 20;
 
-    private static final Color BOX =
-            new Color(5, 38, 17);
+    private static final Color GREEN = Color.GREEN;
+    private static final Color WHITE = Color.WHITE;
+    private static final Color GRAY = Color.GRAY;
 
-    private static final Color ACCENT =
-            new Color(125, 255, 145);
+    private static final Font TITLE_FONT =
+            StoryFont.bold(24);
 
-    private static final Color TEXT =
-            new Color(235, 255, 235);
+    private static final Font HEADING_FONT =
+            StoryFont.regular(16);
 
-    private static final Color SECONDARY =
-            new Color(175, 210, 180);
+    private static final Font INPUT_FONT =
+            StoryFont.regular(18);
+
+    private static final Font MENU_FONT =
+            StoryFont.regular(16);
+
+    private static final Font HINT_FONT =
+            StoryFont.regular(10);
 
     private final JTextField nameField;
     private final Consumer<String> onConfirmed;
+    private final Starfield starfield;
+    private final Timer animationTimer;
 
-    public NameEntryPanel(
-            Consumer<String> onConfirmed) {
+    private boolean continueSelected = false;
+    private boolean finished = false;
+
+    public NameEntryPanel(Consumer<String> onConfirmed) {
 
         this.onConfirmed = onConfirmed;
 
-        setPreferredSize(
-                new Dimension(448, 520));
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
+        setBackground(Color.BLACK);
+        setLayout(null);
+        setFocusable(true);
+        setDoubleBuffered(true);
 
-        setBackground(BACKGROUND);
-        setLayout(new GridBagLayout());
+        starfield = new Starfield(WIDTH, HEIGHT);
 
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-
-        content.setLayout(
-                new BoxLayout(
-                        content,
-                        BoxLayout.Y_AXIS));
-
-        content.setBorder(
-                new EmptyBorder(
-                        20, 25, 20, 25));
-
-        // ======================================
-        // TITLE
-        // ======================================
-
-        JLabel title =
-                new JLabel("STORY MODE");
-
-        title.setFont(
-                StoryFont.bold(23));
-
-        title.setForeground(ACCENT);
-
-        title.setAlignmentX(
-                Component.CENTER_ALIGNMENT);
-
-        // ======================================
-        // HEADING
-        // ======================================
-
-        JLabel heading =
-                new JLabel("YOUR IDENTITY");
-
-        heading.setFont(
-                StoryFont.bold(16));
-
-        heading.setForeground(TEXT);
-
-        heading.setAlignmentX(
-                Component.CENTER_ALIGNMENT);
-
-        // ======================================
-        // DESCRIPTION
-        // ======================================
-
-        JLabel description =
-                new JLabel(
-                        "What should we call you, pilot?");
-
-        description.setFont(
-                StoryFont.regular(10));
-
-        description.setForeground(SECONDARY);
-
-        description.setAlignmentX(
-                Component.CENTER_ALIGNMENT);
-
-        // ======================================
-        // PLAYER NAME FIELD
-        // ======================================
-
-        nameField =
-                new JTextField(18);
+        // Name input field.
+        nameField = new JTextField();
 
         nameField.setText("");
+        nameField.setFont(INPUT_FONT);
+        nameField.setForeground(WHITE);
+        nameField.setBackground(new Color(8, 8, 17));
 
-        nameField.setFont(
-                StoryFont.regular(17));
+        nameField.setCaretColor(GREEN);
+        nameField.setSelectionColor(new Color(35, 105, 45));
 
-        nameField.setForeground(TEXT);
-        nameField.setBackground(BOX);
-        nameField.setCaretColor(ACCENT);
-
-        nameField.setSelectionColor(
-                new Color(40, 105, 55));
-
-        nameField.setHorizontalAlignment(
-                JTextField.CENTER);
-
+        nameField.setHorizontalAlignment(JTextField.CENTER);
         nameField.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(
-                                ACCENT, 2),
-                        new EmptyBorder(
-                                10, 12, 10, 12)
-                ));
+                BorderFactory.createLineBorder(GREEN, 2)
+        );
 
-        nameField.setMaximumSize(
-                new Dimension(310, 52));
+        nameField.setOpaque(true);
 
-        // ======================================
-        // CHARACTER LIMIT
-        // ======================================
+        ((AbstractDocument) nameField.getDocument())
+                .setDocumentFilter(new NameLimitFilter());
 
-        ((AbstractDocument)
-                nameField.getDocument())
-                .setDocumentFilter(
-                        new DocumentFilter() {
+        nameField.addActionListener(e -> confirmName());
 
-                            @Override
-                            public void insertString(
-                                    FilterBypass fb,
-                                    int offset,
-                                    String string,
-                                    AttributeSet attr)
-                                    throws BadLocationException {
+        nameField.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent event) {
+                continueSelected = false;
+                repaint();
+            }
+        });
 
-                                if (string != null
-                                        && fb.getDocument()
-                                        .getLength()
-                                        + string.length() <= 20) {
+        add(nameField);
 
-                                    super.insertString(
-                                            fb,
-                                            offset,
-                                            string,
-                                            attr);
-                                }
-                            }
+        setupKeyboard();
+        setupMouse();
 
-                            @Override
-                            public void replace(
-                                    FilterBypass fb,
-                                    int offset,
-                                    int length,
-                                    String text,
-                                    AttributeSet attrs)
-                                    throws BadLocationException {
+        animationTimer = new Timer(33, e -> {
+            if (!finished) {
+                starfield.update();
+                repaint();
+            }
+        });
 
-                                if (text != null
-                                        && fb.getDocument()
-                                        .getLength()
-                                        - length
-                                        + text.length() <= 20) {
+        animationTimer.start();
 
-                                    super.replace(
-                                            fb,
-                                            offset,
-                                            length,
-                                            text,
-                                            attrs);
-                                }
-                            }
-                        });
-
-        // ======================================
-        // HINT
-        // ======================================
-
-        JLabel hint =
-                new JLabel(
-                        "Blank = Protagonist");
-
-        hint.setFont(
-                StoryFont.regular(10));
-
-        hint.setForeground(SECONDARY);
-
-        hint.setAlignmentX(
-                Component.CENTER_ALIGNMENT);
-
-        // ======================================
-        // CONTINUE BUTTON
-        // ======================================
-
-        JButton continueButton =
-                new JButton("CONTINUE >");
-
-        continueButton.setFont(
-                StoryFont.bold(13));
-
-        continueButton.setForeground(BACKGROUND);
-        continueButton.setBackground(ACCENT);
-        continueButton.setOpaque(true);
-        continueButton.setFocusPainted(false);
-
-        continueButton.setBorder(
-                new EmptyBorder(
-                        12, 22, 12, 22));
-
-        continueButton.setAlignmentX(
-                Component.CENTER_ALIGNMENT);
-
-        continueButton.addActionListener(
-                e -> confirmName());
-
-        nameField.addActionListener(
-                e -> confirmName());
-
-        // ======================================
-        // LAYOUT
-        // ======================================
-
-        content.add(title);
-
-        content.add(
-                Box.createVerticalStrut(55));
-
-        content.add(heading);
-
-        content.add(
-                Box.createVerticalStrut(18));
-
-        content.add(description);
-
-        content.add(
-                Box.createVerticalStrut(28));
-
-        content.add(nameField);
-
-        content.add(
-                Box.createVerticalStrut(12));
-
-        content.add(hint);
-
-        content.add(
-                Box.createVerticalStrut(38));
-
-        content.add(continueButton);
-
-        add(content);
-
-        // Focus the text field automatically.
         SwingUtilities.invokeLater(
-                () -> nameField.requestFocusInWindow());
+                nameField::requestFocusInWindow
+        );
     }
 
-    /**
-     * Confirms the protagonist's name.
-     */
+    // =========================================
+    // LAYOUT
+    // =========================================
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+
+        double scaleX = getWidth() / (double) WIDTH;
+        double scaleY = getHeight() / (double) HEIGHT;
+
+        nameField.setBounds(
+                (int) (74 * scaleX),
+                (int) (269 * scaleY),
+                (int) (300 * scaleX),
+                (int) (48 * scaleY)
+        );
+    }
+
+    // =========================================
+    // KEYBOARD
+    // =========================================
+
+    private void setupKeyboard() {
+
+        bindKey("ESCAPE", "focusName", () -> {
+            continueSelected = false;
+            nameField.requestFocusInWindow();
+            repaint();
+        });
+
+        bindKey("DOWN", "selectContinue",
+                this::selectContinue);
+
+        bindKey("UP", "selectName",
+                this::selectName);
+
+        bindKey("W", "selectNameW",
+                this::selectName);
+
+        bindKey("S", "selectContinueS",
+                this::selectContinue);
+    }
+
+    private void bindKey(
+            String key,
+            String actionName,
+            Runnable action) {
+
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(
+                KeyStroke.getKeyStroke(key),
+                actionName
+        );
+
+        getActionMap().put(
+                actionName,
+                new AbstractAction() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        if (!finished) {
+                            action.run();
+                        }
+                    }
+                }
+        );
+    }
+
+    private void selectContinue() {
+        if (!continueSelected) {
+            continueSelected = true;
+            MenuSounds.playMove();
+        }
+
+        requestFocusInWindow();
+        repaint();
+    }
+
+    private void selectName() {
+        if (continueSelected) {
+            MenuSounds.playMove();
+        }
+
+        continueSelected = false;
+        nameField.requestFocusInWindow();
+        repaint();
+    }
+
+    // =========================================
+    // MOUSE
+    // =========================================
+
+    private void setupMouse() {
+
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent event) {
+
+                int x = logicalX(event.getX());
+                int y = logicalY(event.getY());
+
+                if (isOverContinue(x, y)) {
+                    if (!continueSelected) {
+                        continueSelected = true;
+                        MenuSounds.playMove();
+                        repaint();
+                    }
+                }
+            }
+        });
+
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+
+                if (!SwingUtilities.isLeftMouseButton(event)) {
+                    return;
+                }
+
+                int x = logicalX(event.getX());
+                int y = logicalY(event.getY());
+
+                if (isOverContinue(x, y)) {
+                    confirmName();
+                }
+            }
+        });
+    }
+
+    private boolean isOverContinue(int x, int y) {
+        return x >= 90 && x <= WIDTH - 90
+                && y >= 355 && y <= 410;
+    }
+
+    private int logicalX(int x) {
+        if (getWidth() <= 0) {
+            return x;
+        }
+
+        return (int) (
+                x * WIDTH / (double) getWidth()
+        );
+    }
+
+    private int logicalY(int y) {
+        if (getHeight() <= 0) {
+            return y;
+        }
+
+        return (int) (
+                y * HEIGHT / (double) getHeight()
+        );
+    }
+
+    // =========================================
+    // CONFIRM NAME
+    // =========================================
+
     private void confirmName() {
-        String name =
-                nameField.getText().trim();
+
+        if (finished) {
+            return;
+        }
+
+        String name = nameField.getText().trim();
 
         if (name.isEmpty()) {
             name = "Protagonist";
         }
+
+        finished = true;
+        animationTimer.stop();
 
         if (onConfirmed != null) {
             onConfirmed.accept(name);
         }
     }
 
-    /**
-     * Draws the green decorative border.
-     */
-    @Override
-    protected void paintComponent(
-            Graphics graphics) {
+    // =========================================
+    // DRAWING
+    // =========================================
 
+    @Override
+    protected void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
 
-        Graphics2D g =
-                (Graphics2D) graphics.create();
+        Graphics2D g = (Graphics2D) graphics.create();
 
-        g.setColor(
-                new Color(40, 105, 55));
+        g.scale(
+                getWidth() / (double) WIDTH,
+                getHeight() / (double) HEIGHT
+        );
 
-        g.drawRoundRect(
-                10, 10,
-                getWidth() - 21,
-                getHeight() - 21,
-                12, 12);
+        g.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_OFF
+        );
+
+        g.setRenderingHint(
+                RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF
+        );
+
+        g.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
+        );
+
+        drawBackground(g);
+        drawTitle(g);
+        drawContent(g);
+        drawContinue(g);
+        drawHints(g);
 
         g.dispose();
+    }
+
+    private void drawBackground(Graphics2D g) {
+
+        BufferedImage nebula = starfield.getNebula();
+
+        g.drawImage(
+                nebula,
+                0,
+                0,
+                WIDTH,
+                HEIGHT,
+                null
+        );
+
+        for (Planet planet : starfield.getPlanets()) {
+            g.drawImage(
+                    planet.getFrame(),
+                    planet.getX(),
+                    planet.getY(),
+                    null
+            );
+        }
+
+        int unit = starfield.getStarPixel();
+
+        for (int i = 0; i < starfield.getCount(); i++) {
+
+            int x = starfield.getX(i);
+            int y = starfield.getY(i);
+            int arm = starfield.getArm(i);
+
+            g.setColor(starfield.getColor(i));
+            g.fillRect(x, y, unit, unit);
+
+            for (int d = 1; d <= arm; d++) {
+
+                if (d > 2 && d % 2 == 1) {
+                    continue;
+                }
+
+                g.fillRect(x + d * unit, y, unit, unit);
+                g.fillRect(x - d * unit, y, unit, unit);
+                g.fillRect(x, y + d * unit, unit, unit);
+                g.fillRect(x, y - d * unit, unit, unit);
+            }
+        }
+    }
+
+    private void drawTitle(Graphics2D g) {
+
+        g.setColor(GREEN);
+        g.setFont(TITLE_FONT);
+
+        drawCentered(g, "STORY MODE", 90);
+
+        g.setFont(HEADING_FONT);
+        g.setColor(GRAY);
+
+        drawCentered(g, "NEW GAME", 126);
+
+        g.setColor(new Color(65, 125, 75));
+        g.drawLine(65, 145, WIDTH - 65, 145);
+    }
+
+    private void drawContent(Graphics2D g) {
+
+        g.setColor(WHITE);
+        g.setFont(HEADING_FONT);
+
+        drawCentered(g, "YOUR IDENTITY", 210);
+
+        g.setColor(GRAY);
+        g.setFont(HINT_FONT);
+
+        drawCentered(
+                g,
+                "WHAT SHOULD WE CALL YOU, PILOT?",
+                239
+        );
+
+        drawCentered(
+                g,
+                "BLANK = PROTAGONIST",
+                339
+        );
+    }
+
+    private void drawContinue(Graphics2D g) {
+
+        g.setFont(MENU_FONT);
+
+        if (continueSelected) {
+            g.setColor(GREEN);
+            drawCentered(g, "> CONTINUE <", 388);
+        } else {
+            g.setColor(WHITE);
+            drawCentered(g, "CONTINUE", 388);
+        }
+    }
+
+    private void drawHints(Graphics2D g) {
+
+        g.setColor(GRAY);
+        g.setFont(HINT_FONT);
+
+        drawCentered(g, "TYPE YOUR NAME", HEIGHT - 45);
+        drawCentered(g, "ENTER TO CONTINUE", HEIGHT - 27);
+    }
+
+    private void drawCentered(
+            Graphics2D g,
+            String text,
+            int baseline) {
+
+        FontMetrics metrics = g.getFontMetrics();
+
+        int x = (WIDTH - metrics.stringWidth(text)) / 2;
+
+        g.drawString(text, x, baseline);
+    }
+
+    // =========================================
+    // 20-CHARACTER LIMIT
+    // =========================================
+
+    private static class NameLimitFilter
+            extends DocumentFilter {
+
+        @Override
+        public void insertString(
+                FilterBypass fb,
+                int offset,
+                String text,
+                AttributeSet attributes)
+                throws BadLocationException {
+
+            if (text == null) {
+                return;
+            }
+
+            if (fb.getDocument().getLength()
+                    + text.length() <= MAX_NAME_LENGTH) {
+
+                super.insertString(
+                        fb,
+                        offset,
+                        text,
+                        attributes
+                );
+            }
+        }
+
+        @Override
+        public void replace(
+                FilterBypass fb,
+                int offset,
+                int length,
+                String text,
+                AttributeSet attributes)
+                throws BadLocationException {
+
+            if (text == null) {
+                return;
+            }
+
+            int newLength =
+                    fb.getDocument().getLength()
+                            - length
+                            + text.length();
+
+            if (newLength <= MAX_NAME_LENGTH) {
+                super.replace(
+                        fb,
+                        offset,
+                        length,
+                        text,
+                        attributes
+                );
+            }
+        }
+    }
+
+    // =========================================
+    // CLEANUP
+    // =========================================
+
+    @Override
+    public void removeNotify() {
+        animationTimer.stop();
+        super.removeNotify();
     }
 }

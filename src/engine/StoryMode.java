@@ -51,6 +51,11 @@ public final class StoryMode {
         return playerName;
     }
 
+    public static void setPlayerName(String name) {
+        playerName = (name == null || name.trim().isEmpty())
+                ? "Protagonist" : name.trim();
+    }
+
     // ==========================================
     // CHAPTER AND LEVEL INFORMATION
     // ==========================================
