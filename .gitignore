@@ -202,3 +202,6 @@ diamonds.tmp
 # Equipped items the player owns, written at runtime (Item System)
 /equipment
 /equipment.tmp
+
+# Personal Story Mode save files
+/saves/
