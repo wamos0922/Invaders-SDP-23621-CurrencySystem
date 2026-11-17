@@ -288,4 +288,4 @@ public class AchievementsScreen extends Screen {
 				STATUS_X, positionY + 8,
 				achievement.isUnlocked() ? SELECTED : MUTED);
 	}
-}
+}

@@ -56,7 +56,10 @@ public class MeteorManager {
 		double startAngle = this.spawner.rollStartAngle();
 		double endAngle = this.spawner.rollEndAngle(startAngle);
 		// Flatten the path just enough to fit between the HUD and the player.
-		int bottomY = ship.getPositionY() - PLAYER_MARGIN - Meteor.SIZE;
+		// In endless free roam (GOG-7) the ship can fly high up; plan the
+		// path from at least the middle of the screen so there is room.
+		int shipY = Math.max(ship.getPositionY(), this.height / 2);
+		int bottomY = shipY - PLAYER_MARGIN - Meteor.SIZE;
 		int room = bottomY - this.topY;
 		int drop = Meteor.getTotalDrop(this.width, startAngle, endAngle);
 		if (drop > room) {
