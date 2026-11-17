@@ -119,10 +119,53 @@ public final class StaminaManager {
     }
 
     /**
+     * Sets the stamina value for local testing without waiting for gameplay.
+     * This operation is available only when tester mode is enabled.
+     *
+     * @param value Stamina value to set; values are clamped to the valid range.
+     * @throws IllegalStateException when tester mode is not enabled.
+     */
+    public synchronized void setStaminaForTester(final int value) {
+        requireTesterMode();
+        this.stamina = Math.max(0, Math.min(MAX_STAMINA, value));
+        this.lastUpdateTime = System.currentTimeMillis();
+        save();
+    }
+
+    /**
+     * Advances the stamina clock for local testing without sleeping.
+     * Any partial regeneration interval is preserved after the simulation.
+     *
+     * @param elapsedMillis Simulated elapsed time; must not be negative.
+     * @throws IllegalStateException when tester mode is not enabled.
+     * @throws IllegalArgumentException when elapsedMillis is negative.
+     */
+    public synchronized void simulateElapsedTimeForTester(
+            final long elapsedMillis) {
+        requireTesterMode();
+        if (elapsedMillis < 0L)
+            throw new IllegalArgumentException(
+                    "elapsedMillis must not be negative");
+        if (this.stamina >= MAX_STAMINA || elapsedMillis == 0L)
+            return;
+        this.lastUpdateTime = calculateSimulatedTimestamp(
+                this.lastUpdateTime, elapsedMillis);
+        updateRegeneration(System.currentTimeMillis());
+    }
+
+    /**
      * @return true only when the development tester bypass was requested.
      */
     public boolean isTesterMode() {
         return Boolean.getBoolean(TESTER_MODE_PROPERTY);
+    }
+
+    /** Ensures development-only controls cannot be used in normal play. */
+    private void requireTesterMode() {
+        if (!isTesterMode())
+            throw new IllegalStateException(
+                    "Enable -D" + TESTER_MODE_PROPERTY
+                            + "=true to use tester controls");
     }
 
     /**
@@ -140,6 +183,18 @@ public final class StaminaManager {
         this.lastUpdateTime = result[1];
         if (changed)
             save();
+    }
+
+    /**
+     * Moves a saved timestamp backwards to simulate elapsed real time.
+     * Package-private so the arithmetic can be tested without sleeping.
+     */
+    static long calculateSimulatedTimestamp(final long timestamp,
+            final long elapsedMillis) {
+        if (elapsedMillis < 0L)
+            throw new IllegalArgumentException(
+                    "elapsedMillis must not be negative");
+        return elapsedMillis > timestamp ? 0L : timestamp - elapsedMillis;
     }
 
     /**

@@ -54,6 +54,19 @@ public final class StaminaManagerTest {
         check(result[0] == StaminaManager.MAX_STAMINA,
                 "loaded stamina should be capped at maximum");
 
+        check(StaminaManager.calculateSimulatedTimestamp(10_000L, 3_000L)
+                == 7_000L, "tester time simulation should subtract elapsed time");
+        check(StaminaManager.calculateSimulatedTimestamp(1_000L, 2_000L)
+                == 0L, "tester time simulation should not create negative timestamps");
+        boolean rejectedNegativeElapsed = false;
+        try {
+            StaminaManager.calculateSimulatedTimestamp(1_000L, -1L);
+        } catch (IllegalArgumentException expected) {
+            rejectedNegativeElapsed = true;
+        }
+        check(rejectedNegativeElapsed,
+                "tester time simulation should reject negative elapsed time");
+
         System.out.println("StaminaManagerTest: " + checks + " checks passed");
     }
 }

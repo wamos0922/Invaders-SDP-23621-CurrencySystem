@@ -95,6 +95,37 @@ public final class DiamondManager {
 	}
 
 	/**
+	 * Sets the diamond balance for local testing. This operation is available
+	 * only when the stamina tester mode is enabled.
+	 *
+	 * @param amount New balance; must not be negative.
+	 * @throws IllegalStateException when tester mode is not enabled.
+	 * @throws IllegalArgumentException when amount is negative.
+	 */
+	public void setDiamondsForTester(final int amount) {
+		requireTesterMode();
+		if (amount < 0)
+			throw new IllegalArgumentException("amount must not be negative");
+		this.diamonds = amount;
+		save();
+	}
+
+	/** Adds diamonds for local testing without changing normal reward rules. */
+	public void addDiamondsForTester(final int amount) {
+		requireTesterMode();
+		if (amount < 0)
+			throw new IllegalArgumentException("amount must not be negative");
+		addDiamonds(amount);
+	}
+
+	private void requireTesterMode() {
+		if (!Boolean.getBoolean(StaminaManager.TESTER_MODE_PROPERTY))
+			throw new IllegalStateException("Enable -D"
+					+ StaminaManager.TESTER_MODE_PROPERTY
+					+ "=true to use tester controls");
+	}
+
+	/**
 	 * Resets the balance to zero and persists it. Useful for tests; not
 	 * meant to be called during normal play.
 	 */
