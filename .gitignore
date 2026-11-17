@@ -205,3 +205,7 @@ diamonds.tmp
 
 # Personal Story Mode save files
 /saves/
+
+# Local player stamina save data
+stamina.properties
+/stamina-diamond-transaction.properties

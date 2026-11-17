@@ -138,6 +138,15 @@ public final class Core {
 				case 2:
 				case 8:
 
+					// One stamina unit starts a complete Story or Endless run.
+					// The menu will also prevent unavailable selections; this
+					// backend check protects direct starts and other entry paths.
+					if (!StaminaManager.getInstance().tryConsumeForRun()) {
+						LOGGER.info("Run blocked: not enough stamina.");
+						returnCode = 1;
+						break;
+					}
+
 					boolean endless = returnCode == 8;
 
 					EndlessMode.setEnabled(endless);
