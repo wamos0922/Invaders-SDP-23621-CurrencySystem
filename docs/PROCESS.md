@@ -43,7 +43,7 @@ After a conversation with Prof. Lee on 17 Nov 2026 we wrote down the evaluation 
 | Static analysis | Ticket GOG-68, report and screenshots in `docs/process/` |
 | Reviews and CI | PR reviews on GitHub, links in tickets |
 | Testing | Unit tests by feature owners, test plan and report from the tester |
-| Presentation | Ticket GOG-67 |
+| Presentation | Checklist in GOG-66 |
 
 ## 4. Starting state (17 Nov 2026)
 
@@ -81,7 +81,7 @@ Key facts at the time:
 - The tester owns the bigger picture: the test plan and checklist, weekly playtests, bug tickets and the final test report.
 - We cap the tester at about 4-5 tickets to avoid overload and last-week crunch. The tester's tickets are on hold until he has been asked what he prefers.
 
-**Documentation: an epic.** Docs have several deliverables and owners, so they get their own epic (GOG-63) with child tickets, so progress and ownership are visible.
+**Documentation: one epic, one ticket.** Docs get their own epic (GOG-63) so the work is visible in Jira. We first created four child tickets, then merged them into a single task (GOG-66) with a checklist, the same style as GOG-6. One ticket is easier to keep up to date, and GOG-64, 65 and 67 were deleted as duplicates.
 
 **Static analysis: one ticket, not an epic.** It is a small job (run it, fix the top findings, write a summary), so it is a single ticket (GOG-68) under the quality epic (GOG-20).
 
@@ -101,61 +101,66 @@ Key facts at the time:
 
 ## 8. Changes and status
 
-Update this list as work is done.
+Update this list as work is done. Last updated 17 Nov 2026, 17:00 KST.
 
-- [x] Documentation epic **GOG-63** created, with tickets GOG-64 (README roles), GOG-65 (collect role lines), GOG-66 (process notes), GOG-67 (presentation).
+**Done**
+- [x] Documentation epic **GOG-63** created, with one task **GOG-66** (checklist for README, process notes and presentation). GOG-64, 65 and 67 were deleted as duplicates.
 - [x] Static analysis ticket **GOG-68** created under GOG-20 (unassigned for now).
+- [x] Free-roam movement ticket **GOG-69** created for Imran, under GOG-7.
+- [x] "Progression" epic **GOG-70** created (Ikhwan); GOG-32 to 34 moved under it.
 - [x] Team informed of the reassignment plan; no objections raised (confirmed by Haikal, 17 Nov 2026).
-- [ ] Apply the reassignments in section 9.
-- [ ] Merge GOG-39 to 43 into one ticket "Design 5 shard rarities".
-- [ ] Close GOG-36 ("cancel").
-- [ ] Create the free-roam movement ticket for Imran.
-- [ ] Set GOG-18 and GOG-19 to In Progress.
-- [ ] Re-parent GOG-31 under GOG-6, and GOG-32 to 34 under a new "Progression" epic.
+- [x] Reassignments applied (section 9). GOG-46, 48 and 49 were moved back to Ikhwan, and GOG-50 to 52 back to Amani, after review.
+- [x] Every non-epic ticket now sits under an epic. The project has 6 epics.
+
+**Still to do**
+- [ ] Close or remove GOG-36 ("cancel").
+- [ ] Set GOG-18, GOG-19 and GOG-70 to In Progress.
+- [ ] Decide the owner of GOG-68 (static analysis) and the tool (SpotBugs, Checkstyle or SonarLint).
 - [ ] Add the Testing column and the WIP limit (In Review already exists; start using it).
 - [ ] Add due dates and Must / Should / Stretch labels.
-- [ ] Create the tester's tickets (on hold).
-- [ ] Decide the owner of GOG-68 (static analysis).
-- [ ] Confirm the skill-tree split (GOG-50 to 52).
+- [ ] Create the tester's tickets (on hold until Akif says what he prefers).
+- [ ] Decide whether to merge GOG-39 to 43 into one ticket "Design 5 shard rarities" (optional).
+- [ ] Check GOG-35 with Muizzuddin (not moved yet).
 
-## 9. Reassignment plan
+## 9. Reassignments
 
-**Status: planned.** This is what we agreed to review with the team. Change the status to "applied" once done.
+**Status: applied on 17 Nov 2026.** Tickets moved out of the first plan are marked in the last column.
 
-| Ticket | Summary | From | To |
-|---|---|---|---|
-| GOG-30 | Enemy variants 36-39 | Muizzuddin | Nikmar |
-| GOG-31 | Tutorial level | Muizzuddin | Wafi |
-| GOG-35 | Story visuals and audio | Muizzuddin | Wafi |
-| GOG-38 | Level completion rewards | Ikhwan | Imran |
-| GOG-39 | Design 5 shard rarities (merge of GOG-39 to 43) | unassigned | Wafi |
-| GOG-44, 45, 46 | Challenge modes | unassigned | Imran |
-| GOG-47 | Nerfed boss variants | unassigned | Nikmar |
-| GOG-48, 49 | Shard space mode | unassigned | Haikal |
-| GOG-50 | Mode-specific equipment slots | unassigned | Ikhwan (*proposed*) |
-| GOG-51 | Skill tree page navigation | unassigned | Wafi (*proposed*) |
-| GOG-52 | Skill tree progression and unlock | unassigned | Nikmar (*proposed*) |
-| GOG-16 | Fight every boss at the end | unassigned | Backlog (Stretch) |
-| new | Free-roam movement in endless mode | missing | Imran |
+| Ticket | Summary | From | To | Note |
+|---|---|---|---|---|
+| GOG-30 | Enemy variants 36-39 | Muizzuddin | Nikmar | |
+| GOG-31 | Tutorial level | Muizzuddin | Wafi | |
+| GOG-38 | Level completion rewards | Ikhwan | Imran | |
+| GOG-39 to 43 | Shard rarity designs | unassigned | Wafi | merge still optional |
+| GOG-44, 45 | Weekly and daily challenge modes | unassigned | Imran | |
+| GOG-46 | Challenge mode reset scheduling | unassigned | Ikhwan | first planned for Imran, moved back |
+| GOG-47 | Nerfed boss variants | unassigned | Nikmar | |
+| GOG-48, 49 | Shard space mode | unassigned | Ikhwan | first planned for Haikal, moved back |
+| GOG-50 to 52 | Equipment slots and skill tree | unassigned | Amani | first planned to be split, kept with the feature owner |
+| GOG-69 | Free-roam movement in endless mode | missing | Imran | new ticket |
+| GOG-16 | Fight every boss at the end | unassigned | unassigned | Stretch |
+| GOG-35 | Story visuals and audio | Muizzuddin | Muizzuddin | not moved yet |
 
-**Open tickets per person**
+**Open tickets per person** (epics not counted; checked in Jira at 17:00 KST)
 
-| Person | Before | After (planned) |
-|---|---|---|
-| Amani | 12 | 12 (2 features: level cards and stamina) |
-| Muizzuddin | 7 | 3 |
-| Ikhwan | 5 | 5 |
-| Asyrafuddin | 5 | 5 |
-| Wafi | 1 | 5 |
-| Imran | 0 | 5 |
-| Nikmar | 1 | 4 (5 with GOG-68) |
-| Haikal | 0 | 2, plus the docs tickets GOG-64 to 67 |
-| Tester (Akif) | 0 | on hold |
-| Unassigned | 15 | 1 (GOG-16), plus GOG-68 |
+| Person | Open now |
+|---|---|
+| Ikhwan | 7 (GOG-10, 32, 33, 34, 46, 48, 49) |
+| Wafi | 7 (GOG-14, 31, 39 to 43) |
+| Muizzuddin | 5 (GOG-6, 23, 35, 36, 37; GOG-36 is to be closed) |
+| Amani | 5 (GOG-9, 11, 50, 51, 52; the 10 stamina subtasks are Done) |
+| Asyrafuddin | 5 (GOG-8, 26 to 29) |
+| Imran | 4 (GOG-38, 44, 45, 69) |
+| Nikmar | 3 (GOG-15, 30, 47) |
+| Haikal | 1 (GOG-66) |
+| Tester (Akif) | 0, on hold |
+| Unassigned | 2 (GOG-16, GOG-68) |
+
+Before the changes, 15 tickets were unassigned and Wafi and Nikmar had one ticket each (see [`process/workload-analysis-2026-11-17.md`](process/workload-analysis-2026-11-17.md)). Ikhwan and Wafi are now the highest, so we watch them in the weekly check-in.
 
 ## 10. Team roles
 
-To be confirmed by each member. Each person adds their own line to the README too (GOG-65).
+To be confirmed by each member. Each person adds their own line to the README too (checklist in GOG-66).
 
 | Member | Role / features |
 |---|---|
@@ -233,4 +238,4 @@ Save images in `docs/process/images/` and date every file name. The "before" scr
 
 - Jira project: GOG (gog-spaceinvaders.atlassian.net)
 - Before-state snapshot: [`process/jira-snapshot-2026-11-17.md`](process/jira-snapshot-2026-11-17.md)
-- Documentation epic: GOG-63 · Static analysis: GOG-68 · Quality epic: GOG-20
+- Documentation epic: GOG-63 (task GOG-66) · Static analysis: GOG-68 · Quality epic: GOG-20 · Progression epic: GOG-70
