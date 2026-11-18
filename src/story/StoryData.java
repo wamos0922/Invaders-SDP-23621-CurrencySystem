@@ -13,9 +13,9 @@ import java.util.Properties;
 
 public class StoryData {
 
-    private static final String DIALOGUE_FOLDER = "res/story/Dialogue/";
+    private static final String DIALOGUE_FOLDER =
+            "res/story/Dialogue/";
 
-    // Determines which file contains the requested panel.
     private static String getFileName(int panelNumber) {
         if (panelNumber >= 1 && panelNumber <= 5) {
             return "prologue.properties";
@@ -38,8 +38,8 @@ public class StoryData {
         );
     }
 
-    // Loads all dialogue entries for one story panel.
-    public static List<Dialogue> loadPanel(int panelNumber) throws IOException {
+    public static List<Dialogue> loadPanel(int panelNumber)
+            throws IOException {
 
         if (panelNumber < 1 || panelNumber > 33) {
             throw new IllegalArgumentException(
@@ -48,9 +48,10 @@ public class StoryData {
         }
 
         Properties properties = new Properties();
-        String filePath = DIALOGUE_FOLDER + getFileName(panelNumber);
 
-        // Read the properties file using UTF-8.
+        String filePath =
+                DIALOGUE_FOLDER + getFileName(panelNumber);
+
         try (InputStreamReader reader = new InputStreamReader(
                 new FileInputStream(filePath),
                 StandardCharsets.UTF_8)) {
@@ -60,39 +61,50 @@ public class StoryData {
 
         List<Dialogue> dialogues = new ArrayList<>();
 
-        // Read panel entries in numerical order.
         for (int i = 1; ; i++) {
 
             String key = "panel." + panelNumber + "." + i;
             String value = properties.getProperty(key);
 
-            // No more dialogue entries for this panel.
             if (value == null) {
                 break;
             }
 
-            // Separate the speaker from the dialogue text.
             String[] parts = value.split("\\|", 2);
 
             if (parts.length != 2) {
-                throw new IOException("Invalid dialogue format: " + key);
+                throw new IOException(
+                        "Invalid dialogue format: " + key
+                );
             }
 
-            String speaker = parts[0].trim();
+            String originalSpeaker = parts[0].trim();
+            String speaker = originalSpeaker;
             String text = parts[1].trim();
 
-            // Replace Protagonist with the player's chosen name.
+            // Preserve the character identity for portraits,
+            // even when the player chooses a custom name.
             if (speaker.equalsIgnoreCase("Protagonist")) {
                 speaker = StoryMode.getPlayerName();
             }
 
-            // Narration is displayed differently from character dialogue.
             Dialogue.DialogueType type =
-                    speaker.equalsIgnoreCase("Narrator")
+                    originalSpeaker.equalsIgnoreCase("Narrator")
                             ? Dialogue.DialogueType.NARRATION
                             : Dialogue.DialogueType.CHARACTER;
 
-            dialogues.add(new Dialogue(speaker, text, type));
+            String emotion =
+                    StoryEmotions.getEmotion(panelNumber, i);
+
+            dialogues.add(
+                    new Dialogue(
+                            speaker,
+                            text,
+                            type,
+                            originalSpeaker,
+                            emotion
+                    )
+            );
         }
 
         if (dialogues.isEmpty()) {
