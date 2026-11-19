@@ -1,5 +1,8 @@
 package screen;
 
+import java.awt.Color;
+import engine.DrawManager;
+
 /** Deterministic checks for the player-facing stamina countdown formatting. */
 public final class StaminaUiTest {
 
@@ -22,6 +25,16 @@ public final class StaminaUiTest {
                 "zero remaining time should display 00:00");
         check("00:00".equals(TitleScreen.formatStaminaCountdown(-1L)),
                 "negative durations should be clamped to zero");
+        check(new Color(65, 235, 85).equals(DrawManager.staminaColor(5, 5))
+                        && new Color(65, 235, 85).equals(
+                                DrawManager.staminaColor(3, 5)),
+                "three to five stamina should use the green battery colour");
+        check(new Color(255, 205, 55).equals(DrawManager.staminaColor(2, 5))
+                        && new Color(255, 205, 55).equals(
+                                DrawManager.staminaColor(1, 5)),
+                "one or two stamina should use the yellow battery colour");
+        check(new Color(245, 65, 65).equals(DrawManager.staminaColor(0, 5)),
+                "zero stamina should use the red battery colour");
         System.out.println("StaminaUiTest: " + checks + " checks passed");
     }
 

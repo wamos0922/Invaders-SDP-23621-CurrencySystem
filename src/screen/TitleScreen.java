@@ -39,6 +39,8 @@ public class TitleScreen extends Screen {
 	private boolean confirmWasDown;
 	/** Whether R was held during the previous update. */
 	private boolean refillWasDown;
+	/** Whether the stamina information popup is open. */
+	private boolean showingStaminaInfo;
 	/** Whether the stamina refill confirmation is open. */
 	private boolean showingStaminaRefillConfirm;
 	/** Whether Yes is selected in the stamina refill confirmation. */
@@ -120,7 +122,9 @@ public class TitleScreen extends Screen {
 		}
 
 		if (escapePressed) {
-			if (this.showingStaminaRefillConfirm) {
+			if (this.showingStaminaInfo) {
+				this.showingStaminaInfo = false;
+			} else if (this.showingStaminaRefillConfirm) {
 				cancelStaminaRefill();
 			} else if (this.showingExitConfirm) {
 				closeExitConfirm();
@@ -130,7 +134,10 @@ public class TitleScreen extends Screen {
 			return;
 		}
 
-		if (this.showingStaminaRefillConfirm) {
+		if (this.showingStaminaInfo) {
+			if (confirmPressed || inputManager.isMousePressed())
+				this.showingStaminaInfo = false;
+		} else if (this.showingStaminaRefillConfirm) {
 			updateStaminaRefillConfirm(confirmPressed);
 		} else if (this.showingExitConfirm) {
 			updateExitConfirm(confirmPressed);
@@ -139,7 +146,9 @@ public class TitleScreen extends Screen {
 		}
 
 		if (inputManager.isMouseMoved()) {
-			if (this.showingStaminaRefillConfirm) {
+			if (this.showingStaminaInfo) {
+				// The information popup intentionally has no hover actions.
+			} else if (this.showingStaminaRefillConfirm) {
 				final Boolean answer = drawManager.staminaRefillAnswerAt(this,
 						inputManager.getMouseX(), inputManager.getMouseY());
 				if (answer != null && answer.booleanValue() != this.staminaRefillYes) {
@@ -202,6 +211,11 @@ public class TitleScreen extends Screen {
 				return;
 		}
 		if (inputManager.isMousePressed()) {
+			if (drawManager.isStaminaInfoAt(this,
+					inputManager.getMouseX(), inputManager.getMouseY())) {
+				this.showingStaminaInfo = true;
+				return;
+			}
 			if (drawManager.isStaminaRefillAt(this,
 					inputManager.getMouseX(), inputManager.getMouseY())) {
 				openStaminaRefillConfirm();
@@ -369,12 +383,14 @@ public class TitleScreen extends Screen {
 	 * @return Line drawn at the bottom of the screen.
 	 */
 	private String keyHints() {
+		if (this.showingStaminaInfo)
+			return "click anywhere or esc close";
 		if (this.showingExitConfirm || this.showingStaminaRefillConfirm)
 			return "arrows to choose, space ok, esc cancel";
 		if (System.currentTimeMillis() < this.staminaNoticeUntil)
 			return this.staminaNotice;
 
-		return "w+s/arrows move, space select, R refill, esc exit";
+		return "click energy info | R refill | arrows move | space select";
 	}
 
 	/**
@@ -424,8 +440,7 @@ public class TitleScreen extends Screen {
 		long remaining = stamina.getMillisUntilNextStamina();
 		String countdown = formatStaminaCountdown(remaining);
 		drawManager.drawStaminaPanel(this, stamina.getStamina(),
-				stamina.getMaxStamina(), DiamondManager.getInstance().getDiamonds(),
-				countdown);
+				stamina.getMaxStamina(), DiamondManager.getInstance().getDiamonds());
 		drawManager.drawMenu(this, this.selected);
 		drawManager.drawKeyHints(this, keyHints());
 
@@ -435,6 +450,10 @@ public class TitleScreen extends Screen {
 		else if (this.showingStaminaRefillConfirm)
 			drawManager.drawStaminaRefillConfirm(this, this.staminaRefillYes,
 					DiamondManager.getInstance().getDiamonds());
+		else if (this.showingStaminaInfo)
+			drawManager.drawStaminaInfo(this, stamina.getStamina(),
+					stamina.getMaxStamina(), countdown, remaining,
+					StaminaManager.REGEN_INTERVAL_MILLIS);
 
 		drawManager.completeDrawing(this);
 	}
