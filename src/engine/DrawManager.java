@@ -1179,6 +1179,93 @@ public final class DrawManager {
 					item == selected, item.isEnabled());
 	}
 
+	/** Draws a compact stamina and diamond status strip above the title. */
+	public void drawStaminaPanel(final Screen screen, final int stamina,
+			final int maximum, final int diamonds, final String countdown) {
+		int panelWidth = Math.min(432, screen.getWidth() - 16);
+		int x = (screen.getWidth() - panelWidth) / 2;
+		int y = 4;
+		backBufferGraphics.setColor(new Color(12, 24, 12));
+		backBufferGraphics.fillRoundRect(x, y, panelWidth, 25, 6, 6);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawRoundRect(x, y, panelWidth, 25, 6, 6);
+		backBufferGraphics.setFont(fontRegular);
+		StringBuilder bar = new StringBuilder();
+		for (int i = 0; i < maximum; i++)
+			bar.append(i < stamina ? "#" : "-");
+		String timer = stamina >= maximum ? "FULL" : "NEXT " + countdown;
+		String status = "STA " + stamina + "/" + maximum + " [" + bar
+				+ "]  " + timer;
+		String action = "DIA " + diamonds + "  [R] REFILL";
+		backBufferGraphics.setColor(Color.WHITE);
+		int baseline = y + 18;
+		backBufferGraphics.drawString(status, x + 10, baseline);
+		backBufferGraphics.setColor(stamina >= maximum || diamonds <= 0
+				? Color.GRAY : Color.YELLOW);
+		backBufferGraphics.drawString(action,
+				x + panelWidth - fontRegularMetrics.stringWidth(action) - 10,
+				baseline);
+	}
+
+	/** Draws the stamina refill confirmation over the title menu. */
+	public void drawStaminaRefillConfirm(final Screen screen,
+			final boolean yesSelected, final int diamonds) {
+		int boxWidth = Math.min(330, screen.getWidth() - 30);
+		int boxHeight = menuItemSpacing() * 4;
+		int x = (screen.getWidth() - boxWidth) / 2;
+		int y = (screen.getHeight() - boxHeight) / 2;
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.setFont(fontRegular);
+		drawCenteredRegularString(screen, "Refill stamina to 5/5?",
+				y + menuItemSpacing() * 2);
+		drawCenteredRegularString(screen, "Cost: 1 diamond (you have "
+				+ diamonds + ")", y + menuItemSpacing() * 3);
+		String yes = yesSelected ? "> YES <" : "YES";
+		String no = yesSelected ? "NO" : "> NO <";
+		int baseline = y + menuItemSpacing() * 4 - 2;
+		backBufferGraphics.setColor(yesSelected ? Color.GREEN : Color.WHITE);
+		backBufferGraphics.drawString(yes, x + boxWidth / 4
+				- fontRegularMetrics.stringWidth(yes) / 2, baseline);
+		backBufferGraphics.setColor(yesSelected ? Color.WHITE : Color.GREEN);
+		backBufferGraphics.drawString(no, x + boxWidth * 3 / 4
+				- fontRegularMetrics.stringWidth(no) / 2, baseline);
+	}
+
+	/** Returns the refill answer under the pointer, or null outside the buttons. */
+	public Boolean staminaRefillAnswerAt(final Screen screen,
+			final int positionX, final int positionY) {
+		int boxWidth = Math.min(330, screen.getWidth() - 30);
+		int boxHeight = menuItemSpacing() * 4;
+		int x = (screen.getWidth() - boxWidth) / 2;
+		int y = (screen.getHeight() - boxHeight) / 2;
+		int baseline = y + menuItemSpacing() * 4 - 2;
+		int top = baseline - fontRegularMetrics.getAscent();
+		if (positionY < top || positionY >= top + fontRegularMetrics.getHeight()
+				|| positionX < x || positionX >= x + boxWidth)
+			return null;
+		return positionX < screen.getWidth() / 2;
+	}
+
+	/** Returns true when the pointer is over the title-screen refill action. */
+	public boolean isStaminaRefillAt(final Screen screen,
+			final int positionX, final int positionY) {
+		String action = "DIA " + DiamondManager.getInstance().getDiamonds()
+				+ "  [R] REFILL";
+		int panelWidth = Math.min(432, screen.getWidth() - 16);
+		int panelX = (screen.getWidth() - panelWidth) / 2;
+		int actionX = panelX + panelWidth
+				- fontRegularMetrics.stringWidth(action) - 10;
+		int actionTop = 4 + 18 - fontRegularMetrics.getAscent();
+		return positionX >= actionX - 4
+				&& positionX < panelX + panelWidth - 6
+				&& positionY >= actionTop
+				&& positionY < actionTop + fontRegularMetrics.getHeight();
+	}
+
 	/**
 	 * Finds the menu item drawn at a given height. Each item owns a full-width
 	 * row as tall as the spacing between items, so the whole row is clickable,
