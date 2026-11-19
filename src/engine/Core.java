@@ -138,15 +138,6 @@ public final class Core {
 				case 2:
 				case 8:
 
-					// One stamina unit starts a complete Story or Endless run.
-					// The menu will also prevent unavailable selections; this
-					// backend check protects direct starts and other entry paths.
-					if (!StaminaManager.getInstance().tryConsumeForRun()) {
-						LOGGER.info("Run blocked: not enough stamina.");
-						returnCode = 1;
-						break;
-					}
-
 					boolean endless = returnCode == 8;
 
 					EndlessMode.setEnabled(endless);
@@ -234,6 +225,15 @@ public final class Core {
 						if (returnCode != 2) {
 							break;
 						}
+					}
+
+					// Charge only after Story save selection or the Endless tutorial
+					// has completed, so backing out before gameplay costs nothing.
+					// This remains the backend guard for direct/non-menu entry paths.
+					if (!StaminaManager.getInstance().tryConsumeForRun()) {
+						LOGGER.info("Run blocked: not enough stamina.");
+						returnCode = 1;
+						break;
 					}
 
 					do {
