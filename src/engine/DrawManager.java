@@ -1258,10 +1258,13 @@ public final class DrawManager {
 	public void drawStaminaInfo(final Screen screen, final int stamina,
 			final int maximum, final String countdown,
 			final long remainingMillis, final long intervalMillis) {
-		final int boxWidth = Math.min(340, screen.getWidth() - 28);
-		final int boxHeight = 142;
+		// Use almost the full logical screen width: the pixel font's longer
+		// messages must remain inside the panel at every supported scale.
+		final int boxWidth = Math.min(420, screen.getWidth() - 20);
+		final int boxHeight = 166;
 		final int x = (screen.getWidth() - boxWidth) / 2;
 		final int y = (screen.getHeight() - boxHeight) / 2;
+		final int textWidth = Math.max(1, boxWidth - 32);
 		backBufferGraphics.setColor(new Color(0, 0, 0, 205));
 		backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 		backBufferGraphics.setColor(new Color(13, 20, 35));
@@ -1271,37 +1274,42 @@ public final class DrawManager {
 
 		backBufferGraphics.setFont(fontBig);
 		backBufferGraphics.setColor(new Color(125, 255, 125));
-		drawCenteredBigString(screen, "ENERGY STATUS", y + 29);
+		drawCenteredBigString(screen, "ENERGY STATUS", y + 32);
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.setColor(Color.WHITE);
 		if (stamina >= maximum) {
-			drawCenteredRegularString(screen, "Your energy is fully charged!",
-					y + 57);
-			drawCenteredRegularString(screen, "You are ready for your next mission.",
-					y + 77);
+			drawCenteredRegularStringFitted(screen,
+					"Your energy is fully charged!", y + 70, textWidth,
+					Color.WHITE);
+			drawCenteredRegularStringFitted(screen,
+					"You are ready for your next mission.", y + 96,
+					textWidth, Color.WHITE);
 		} else {
-			drawCenteredRegularString(screen, "Your energy is recovering!",
-					y + 55);
-			drawCenteredRegularString(screen, "Next energy point in " + countdown,
-					y + 75);
+			drawCenteredRegularStringFitted(screen,
+					"Your energy is recovering!", y + 60, textWidth,
+					Color.WHITE);
+			drawCenteredRegularStringFitted(screen,
+					"Next energy point in " + countdown, y + 82,
+					textWidth, Color.WHITE);
 			long safeInterval = Math.max(1L, intervalMillis);
 			int progress = (int) Math.max(0L, Math.min(100L,
 					(safeInterval - Math.max(0L, remainingMillis)) * 100L
 					/ safeInterval));
 			int progressWidth = boxWidth - 70;
 			int progressX = x + 35;
-			int progressY = y + 91;
+			int progressY = y + 99;
 			backBufferGraphics.setColor(new Color(35, 42, 55));
 			backBufferGraphics.fillRect(progressX, progressY, progressWidth, 10);
 			backBufferGraphics.setColor(new Color(90, 225, 115));
 			backBufferGraphics.fillRect(progressX + 1, progressY + 1,
 					Math.max(0, (progressWidth - 2) * progress / 100), 8);
-			drawCenteredRegularString(screen,
-					"One point regenerates every 10 minutes.", y + 119);
+			drawCenteredRegularStringFitted(screen,
+					"One point regenerates every 10 minutes.", y + 130,
+					textWidth, new Color(90, 225, 115));
 		}
-		backBufferGraphics.setColor(new Color(165, 175, 190));
-		drawCenteredRegularString(screen, "Click anywhere or press ESC to close",
-				y + boxHeight - 8);
+		drawCenteredRegularStringFitted(screen,
+				"Click anywhere or press ESC to close",
+				y + boxHeight - 11, textWidth, new Color(165, 175, 190));
 	}
 
 	/** Returns true when the pointer is over the battery or energy bar. */
@@ -1963,6 +1971,26 @@ public final class DrawManager {
 					/ 4 + fontRegularMetrics.getHeight() * (i + 1) * 2);
 			i++;
 		}
+	}
+
+	/** Draws centered regular text, shrinking it only when needed to fit. */
+	private void drawCenteredRegularStringFitted(final Screen screen,
+			final String string, final int baseline, final int maxWidth,
+			final Color color) {
+		Font fitted = fontRegular;
+		float size = (float) Math.floor(fontRegular.getSize2D());
+		FontMetrics metrics = backBufferGraphics.getFontMetrics(fitted);
+		while (metrics.stringWidth(string) > maxWidth && size > 7f) {
+			size -= 1f;
+			fitted = fontRegular.deriveFont(size);
+			metrics = backBufferGraphics.getFontMetrics(fitted);
+		}
+		backBufferGraphics.setFont(fitted);
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.drawString(string,
+				(screen.getWidth() - metrics.stringWidth(string)) / 2,
+				baseline);
+		backBufferGraphics.setFont(fontRegular);
 	}
 
 	/**
