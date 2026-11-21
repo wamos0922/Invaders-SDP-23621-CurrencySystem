@@ -1179,6 +1179,205 @@ public final class DrawManager {
 					item == selected, item.isEnabled());
 	}
 
+	/** Draws the compact, clickable stamina and diamond status strip. */
+	public void drawStaminaPanel(final Screen screen, final int stamina,
+			final int maximum, final int diamonds) {
+		final int panelWidth = Math.min(432, screen.getWidth() - 16);
+		final int x = (screen.getWidth() - panelWidth) / 2;
+		final int y = 4;
+		final int safeMaximum = Math.max(1, maximum);
+		final int safeStamina = Math.max(0, Math.min(safeMaximum, stamina));
+		final Color energyColor = staminaColor(safeStamina, safeMaximum);
+		backBufferGraphics.setColor(new Color(8, 13, 24, 235));
+		backBufferGraphics.fillRoundRect(x, y, panelWidth, 25, 6, 6);
+		backBufferGraphics.setColor(new Color(75, 115, 150));
+		backBufferGraphics.drawRoundRect(x, y, panelWidth, 25, 6, 6);
+
+		// Pixel-art battery: body, terminal and a dark inset.
+		final int batteryX = x + 10;
+		final int batteryY = y + 6;
+		backBufferGraphics.setColor(energyColor);
+		backBufferGraphics.fillRect(batteryX + 15, batteryY + 4, 3, 7);
+		backBufferGraphics.drawRect(batteryX, batteryY, 14, 14);
+		backBufferGraphics.setColor(new Color(15, 20, 28));
+		backBufferGraphics.fillRect(batteryX + 2, batteryY + 2, 11, 11);
+		backBufferGraphics.setColor(energyColor);
+		for (int i = 0; i < safeStamina; i++)
+			backBufferGraphics.fillRect(batteryX + 3 + i * 2, batteryY + 3,
+					1, 9);
+
+		// Five-segment energy bar inspired by Shadow Fight 2.
+		final int barX = x + 37;
+		final int barY = y + 8;
+		final int barWidth = Math.min(112, Math.max(58, panelWidth / 4));
+		final int segmentGap = 2;
+		final int segmentWidth = (barWidth - (safeMaximum - 1) * segmentGap)
+				/ safeMaximum;
+		for (int i = 0; i < safeMaximum; i++) {
+			int sx = barX + i * (segmentWidth + segmentGap);
+			backBufferGraphics.setColor(new Color(37, 42, 53));
+			backBufferGraphics.fillRect(sx, barY, segmentWidth, 9);
+			backBufferGraphics.setColor(new Color(100, 110, 125));
+			backBufferGraphics.drawRect(sx, barY, segmentWidth, 9);
+			if (i < safeStamina) {
+				backBufferGraphics.setColor(energyColor);
+				backBufferGraphics.fillRect(sx + 1, barY + 1,
+						Math.max(1, segmentWidth - 1), 7);
+			}
+		}
+
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.drawString(safeStamina + "/" + safeMaximum,
+				barX + barWidth + 7, y + 18);
+
+		// Use the same diamond glyph as the existing currency HUD.
+		final String diamondText = Integer.toString(diamonds);
+		final int diamondTextWidth = fontRegularMetrics.stringWidth(diamondText);
+		final int refillWidth = fontRegularMetrics.stringWidth("[R] REFILL");
+		final int diamondX = x + panelWidth - diamondTextWidth - refillWidth - 48;
+		drawCurrencyIcon(diamondX, y + 19, true, 12);
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.drawString(diamondText, diamondX + 17, y + 18);
+		backBufferGraphics.setColor(stamina >= maximum || diamonds <= 0
+				? Color.GRAY : Color.YELLOW);
+		backBufferGraphics.drawString("[R] REFILL",
+				x + panelWidth - refillWidth - 9, y + 18);
+	}
+
+	/** Returns the status colour for the current battery level. */
+	public static Color staminaColor(final int stamina, final int maximum) {
+		if (stamina <= 0)
+			return new Color(245, 65, 65);
+		if (stamina <= 2)
+			return new Color(255, 205, 55);
+		return new Color(65, 235, 85);
+	}
+
+	/** Draws the stamina regeneration information panel. */
+	public void drawStaminaInfo(final Screen screen, final int stamina,
+			final int maximum, final String countdown,
+			final long remainingMillis, final long intervalMillis) {
+		// Use almost the full logical screen width: the pixel font's longer
+		// messages must remain inside the panel at every supported scale.
+		final int boxWidth = Math.min(420, screen.getWidth() - 20);
+		final int boxHeight = 166;
+		final int x = (screen.getWidth() - boxWidth) / 2;
+		final int y = (screen.getHeight() - boxHeight) / 2;
+		final int textWidth = Math.max(1, boxWidth - 32);
+		backBufferGraphics.setColor(new Color(0, 0, 0, 205));
+		backBufferGraphics.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+		backBufferGraphics.setColor(new Color(13, 20, 35));
+		backBufferGraphics.fillRoundRect(x, y, boxWidth, boxHeight, 10, 10);
+		backBufferGraphics.setColor(new Color(75, 190, 105));
+		backBufferGraphics.drawRoundRect(x, y, boxWidth, boxHeight, 10, 10);
+
+		backBufferGraphics.setFont(fontBig);
+		backBufferGraphics.setColor(new Color(125, 255, 125));
+		drawCenteredBigString(screen, "ENERGY STATUS", y + 32);
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(Color.WHITE);
+		if (stamina >= maximum) {
+			drawCenteredRegularStringFitted(screen,
+					"Your energy is fully charged!", y + 70, textWidth,
+					Color.WHITE);
+			drawCenteredRegularStringFitted(screen,
+					"You are ready for your next mission.", y + 96,
+					textWidth, Color.WHITE);
+		} else {
+			drawCenteredRegularStringFitted(screen,
+					"Your energy is recovering!", y + 60, textWidth,
+					Color.WHITE);
+			drawCenteredRegularStringFitted(screen,
+					"Next energy point in " + countdown, y + 82,
+					textWidth, Color.WHITE);
+			long safeInterval = Math.max(1L, intervalMillis);
+			int progress = (int) Math.max(0L, Math.min(100L,
+					(safeInterval - Math.max(0L, remainingMillis)) * 100L
+					/ safeInterval));
+			int progressWidth = boxWidth - 70;
+			int progressX = x + 35;
+			int progressY = y + 99;
+			backBufferGraphics.setColor(new Color(35, 42, 55));
+			backBufferGraphics.fillRect(progressX, progressY, progressWidth, 10);
+			backBufferGraphics.setColor(new Color(90, 225, 115));
+			backBufferGraphics.fillRect(progressX + 1, progressY + 1,
+					Math.max(0, (progressWidth - 2) * progress / 100), 8);
+			drawCenteredRegularStringFitted(screen,
+					"One point regenerates every 10 minutes.", y + 130,
+					textWidth, new Color(90, 225, 115));
+		}
+		drawCenteredRegularStringFitted(screen,
+				"Click anywhere or press ESC to close",
+				y + boxHeight - 11, textWidth, new Color(165, 175, 190));
+	}
+
+	/** Returns true when the pointer is over the battery or energy bar. */
+	public boolean isStaminaInfoAt(final Screen screen,
+			final int positionX, final int positionY) {
+		int panelWidth = Math.min(432, screen.getWidth() - 16);
+		int panelX = (screen.getWidth() - panelWidth) / 2;
+		return positionX >= panelX + 6 && positionX < panelX + 190
+				&& positionY >= 4 && positionY < 29;
+	}
+
+	/** Draws the stamina refill confirmation over the title menu. */
+	public void drawStaminaRefillConfirm(final Screen screen,
+			final boolean yesSelected, final int diamonds) {
+		int boxWidth = Math.min(330, screen.getWidth() - 30);
+		int boxHeight = menuItemSpacing() * 4;
+		int x = (screen.getWidth() - boxWidth) / 2;
+		int y = (screen.getHeight() - boxHeight) / 2;
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawRoundRect(x, y, boxWidth, boxHeight, 8, 8);
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.setFont(fontRegular);
+		drawCenteredRegularString(screen, "Refill stamina to 5/5?",
+				y + menuItemSpacing() * 2);
+		drawCenteredRegularString(screen, "Cost: 1 diamond (you have "
+				+ diamonds + ")", y + menuItemSpacing() * 3);
+		String yes = yesSelected ? "> YES <" : "YES";
+		String no = yesSelected ? "NO" : "> NO <";
+		int baseline = y + menuItemSpacing() * 4 - 2;
+		backBufferGraphics.setColor(yesSelected ? Color.GREEN : Color.WHITE);
+		backBufferGraphics.drawString(yes, x + boxWidth / 4
+				- fontRegularMetrics.stringWidth(yes) / 2, baseline);
+		backBufferGraphics.setColor(yesSelected ? Color.WHITE : Color.GREEN);
+		backBufferGraphics.drawString(no, x + boxWidth * 3 / 4
+				- fontRegularMetrics.stringWidth(no) / 2, baseline);
+	}
+
+	/** Returns the refill answer under the pointer, or null outside the buttons. */
+	public Boolean staminaRefillAnswerAt(final Screen screen,
+			final int positionX, final int positionY) {
+		int boxWidth = Math.min(330, screen.getWidth() - 30);
+		int boxHeight = menuItemSpacing() * 4;
+		int x = (screen.getWidth() - boxWidth) / 2;
+		int y = (screen.getHeight() - boxHeight) / 2;
+		int baseline = y + menuItemSpacing() * 4 - 2;
+		int top = baseline - fontRegularMetrics.getAscent();
+		if (positionY < top || positionY >= top + fontRegularMetrics.getHeight()
+				|| positionX < x || positionX >= x + boxWidth)
+			return null;
+		return positionX < screen.getWidth() / 2;
+	}
+
+	/** Returns true when the pointer is over the title-screen refill action. */
+	public boolean isStaminaRefillAt(final Screen screen,
+			final int positionX, final int positionY) {
+		int panelWidth = Math.min(432, screen.getWidth() - 16);
+		int panelX = (screen.getWidth() - panelWidth) / 2;
+		int actionWidth = fontRegularMetrics.stringWidth("[R] REFILL");
+		int actionX = panelX + panelWidth - actionWidth - 9;
+		int actionTop = 4 + 18 - fontRegularMetrics.getAscent();
+		return positionX >= actionX - 4
+				&& positionX < panelX + panelWidth - 6
+				&& positionY >= actionTop
+				&& positionY < actionTop + fontRegularMetrics.getHeight();
+	}
+
 	/**
 	 * Finds the menu item drawn at a given height. Each item owns a full-width
 	 * row as tall as the spacing between items, so the whole row is clickable,
@@ -1772,6 +1971,26 @@ public final class DrawManager {
 					/ 4 + fontRegularMetrics.getHeight() * (i + 1) * 2);
 			i++;
 		}
+	}
+
+	/** Draws centered regular text, shrinking it only when needed to fit. */
+	private void drawCenteredRegularStringFitted(final Screen screen,
+			final String string, final int baseline, final int maxWidth,
+			final Color color) {
+		Font fitted = fontRegular;
+		float size = (float) Math.floor(fontRegular.getSize2D());
+		FontMetrics metrics = backBufferGraphics.getFontMetrics(fitted);
+		while (metrics.stringWidth(string) > maxWidth && size > 7f) {
+			size -= 1f;
+			fitted = fontRegular.deriveFont(size);
+			metrics = backBufferGraphics.getFontMetrics(fitted);
+		}
+		backBufferGraphics.setFont(fitted);
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.drawString(string,
+				(screen.getWidth() - metrics.stringWidth(string)) / 2,
+				baseline);
+		backBufferGraphics.setFont(fontRegular);
 	}
 
 	/**
