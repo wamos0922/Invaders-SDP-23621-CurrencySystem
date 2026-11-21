@@ -138,11 +138,22 @@ public final class Core {
 				case 2:
 				case 8:
 
+					// ScoreScreen can request another run without returning through
+					// the title menu. Check stamina before tutorials or save creation.
+					if (!StaminaManager.getInstance().canStartRun()) {
+						// Replay bypasses the title menu's normal selection path. Return
+						// to the title screen with the same energy popup already open.
+						currentScreen = new TitleScreen(width, height, FPS, true);
+						returnCode = frame.setScreen(currentScreen);
+						break;
+					}
+
 					boolean endless = returnCode == 8;
 
 					EndlessMode.setEnabled(endless);
 
 					StorySaveManager.Slot activeSave = null;
+					boolean staminaBlocked = false;
 
 					LOGGER.info(
 							endless
@@ -176,21 +187,13 @@ public final class Core {
 							}
 
 							try {
-								activeSave =
-										StorySaveManager.create(
-												StoryMode.getPlayerName()
-										);
-
+								activeSave = StorySaveManager.create(
+										StoryMode.getPlayerName());
 							} catch (IOException ex) {
-								showSaveError(
-										"Could not create a save file",
-										ex
-								);
-
+								showSaveError("Could not create a save file", ex);
 								returnCode = 1;
 								break;
 							}
-
 						} else {
 
 							activeSave = choice.slot;
@@ -227,16 +230,29 @@ public final class Core {
 						}
 					}
 
-					// Charge only after Story save selection or the Endless tutorial
-					// has completed, so backing out before gameplay costs nothing.
-					// This remains the backend guard for direct/non-menu entry paths.
-					if (!StaminaManager.getInstance().tryConsumeForRun()) {
-						LOGGER.info("Run blocked: not enough stamina.");
-						returnCode = 1;
+					// Endless charges once for the whole run. Story charges at the
+					// start of every level attempt, including a retry after game over.
+					if (endless
+							&& !StaminaManager.getInstance().tryConsumeForRun()) {
+						LOGGER.info("Endless run blocked: stamina could not be consumed.");
+						currentScreen = new TitleScreen(width, height, FPS, true);
+						returnCode = frame.setScreen(currentScreen);
 						break;
 					}
 
 					do {
+						if (!endless) {
+							if (!StaminaManager.getInstance().tryConsumeForRun()) {
+								LOGGER.info("Story level blocked: not enough stamina.");
+								// Do not bank pending diamonds automatically when stamina
+								// prevents the next level attempt. The player did not cash out.
+								currentScreen = new TitleScreen(width, height, FPS, true);
+								returnCode = frame.setScreen(currentScreen);
+								staminaBlocked = true;
+								break;
+							}
+
+						}
 						int currentLevel =
 								gameState.getLevel();
 
@@ -359,6 +375,9 @@ public final class Core {
 									|| gameState.getLevel()
 									<= NUM_LEVELS)
 					);
+
+					if (staminaBlocked)
+						break;
 
 					gameState =
 							settlePendingDiamonds(gameState);
