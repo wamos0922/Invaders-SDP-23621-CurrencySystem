@@ -315,6 +315,10 @@ public final class Core {
 						} else {
 
 							if (clearedAlive) {
+								// GOG-38: first-clear bonus for boss
+								// levels, shown before the story panels.
+								showLevelReward(clearedLevel,
+										width, height);
 								StoryMode.onLevelCompleted(
 										frame,
 										clearedLevel
@@ -579,6 +583,27 @@ public final class Core {
 				gameState.getLevelsCompletedRun(),
 				gameState.getCoinsCollected()
 		);
+	}
+
+	/**
+	 * Pays a story level's first-clear bonus, if it has one, and shows it
+	 * (GOG-38). Does nothing for other levels or levels already claimed.
+	 *
+	 * @param clearedLevel
+	 *            Story level that was just cleared alive.
+	 * @param width
+	 *            Screen width.
+	 * @param height
+	 *            Screen height.
+	 */
+	private static void showLevelReward(final int clearedLevel,
+			final int width, final int height) {
+		LevelRewards.Reward reward = LevelRewards.claim(clearedLevel);
+		if (reward == null)
+			return;
+		currentScreen = new LevelRewardScreen(width, height, FPS,
+				clearedLevel, reward);
+		frame.setScreen(currentScreen);
 	}
 
 	private static GameState settlePendingDiamonds(
