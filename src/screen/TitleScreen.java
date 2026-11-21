@@ -65,7 +65,18 @@ public class TitleScreen extends Screen {
 	 *            Frames per second, frame rate at which the game is run.
 	 */
 	public TitleScreen(final int width, final int height, final int fps) {
+		this(width, height, fps, false);
+	}
+
+	/** Creates the title screen with the energy information popup optionally open. */
+	public TitleScreen(final int width, final int height, final int fps,
+			final boolean showStaminaInfo) {
 		super(width, height, fps);
+		this.showingStaminaInfo = showStaminaInfo;
+		// If a mouse press caused this screen to open, do not treat that same
+		// held press as a request to close the popup.
+		this.ignoreMouseUntilRelease = showStaminaInfo
+				&& this.inputManager.isMousePressed();
 
 		// Starts where the cursor was when the menu last closed.
 		this.selected = lastSelected;
@@ -135,7 +146,13 @@ public class TitleScreen extends Screen {
 		}
 
 		if (this.showingStaminaInfo) {
-			if (confirmPressed || inputManager.isMousePressed())
+			if (this.ignoreMouseUntilRelease) {
+				if (!inputManager.isMousePressed())
+					this.ignoreMouseUntilRelease = false;
+			}
+			if (shouldCloseStaminaInfo(confirmPressed,
+						inputManager.isMousePressed(),
+						this.ignoreMouseUntilRelease))
 				this.showingStaminaInfo = false;
 		} else if (this.showingStaminaRefillConfirm) {
 			updateStaminaRefillConfirm(confirmPressed);
@@ -214,6 +231,7 @@ public class TitleScreen extends Screen {
 			if (drawManager.isStaminaInfoAt(this,
 					inputManager.getMouseX(), inputManager.getMouseY())) {
 				this.showingStaminaInfo = true;
+				this.ignoreMouseUntilRelease = true;
 				return;
 			}
 			if (drawManager.isStaminaRefillAt(this,
@@ -237,6 +255,15 @@ public class TitleScreen extends Screen {
             this.moveSoundReady = false;
         }
     }
+
+	/**
+	 * Determines whether an already-open stamina popup should close. The
+	 * opening click is ignored until its mouse button has been released.
+	 */
+	static boolean shouldCloseStaminaInfo(final boolean confirmPressed,
+			final boolean mousePressed, final boolean ignoreMouseUntilRelease) {
+		return confirmPressed || (mousePressed && !ignoreMouseUntilRelease);
+	}
 
 	/** Opens the diamond refill confirmation, or explains why it is unavailable. */
 	private void openStaminaRefillConfirm() {
@@ -413,7 +440,8 @@ public class TitleScreen extends Screen {
 		if ((this.selected == MenuItem.MAIN_STORY
 				|| this.selected == MenuItem.ENDLESS)
 				&& !StaminaManager.getInstance().canStartRun()) {
-			showStaminaNotice("Stamina empty - refill or wait.");
+			this.showingStaminaInfo = true;
+			this.ignoreMouseUntilRelease = this.inputManager.isMousePressed();
 			return;
 		}
 

@@ -130,11 +130,20 @@ public final class Core {
 
 				case 2:
 				case 8:
+
+					// A replay can bypass the title menu's normal selection path.
+					// Check stamina before tutorials or other run-start side effects.
+					if (!StaminaManager.getInstance().canStartRun()) {
+						currentScreen = new TitleScreen(width, height, FPS, true);
+						returnCode = frame.setScreen(currentScreen);
+						break;
+					}
 					boolean endless = returnCode == 8;
 					EndlessMode.setEnabled(endless);
 
 					StorySaveManager.Slot activeSave =
 							ProfileSession.getActive();
+					boolean staminaBlocked = false;
 
 					LOGGER.info(endless
 							? "Starting Endless Mode"
@@ -203,36 +212,24 @@ public final class Core {
 
 						// Bank diamonds preserved in older checkpoints.
 						if (gameState.getPendingDiamonds() > 0) {
-							GameState settled =
-									bankStoryDiamonds(gameState);
+							GameState settled = bankStoryDiamonds(gameState);
 
 							if (settled.getPendingDiamonds() == 0) {
 								try {
-									activeSave =
-											StorySaveManager.checkpoint(
-													activeSave,
-													settled,
-													false);
-
-									ProfileSession.updateCheckpoint(
-											activeSave);
-
+									activeSave = StorySaveManager.checkpoint(
+											activeSave, settled, false);
+									ProfileSession.updateCheckpoint(activeSave);
 									gameState = settled;
 								} catch (IOException ex) {
 									showSaveError(
-											"Could not save migrated Story diamonds",
-											ex);
-
+											"Could not save migrated Story diamonds", ex);
 									returnCode = 1;
 									break;
 								}
 							} else {
 								showSaveError(
-										"Could not bank old Story diamonds",
-										new IOException(
-												"Please check whether your "
-														+ "save folder is writable."));
-
+											"Could not bank old Story diamonds",
+											new IOException("Please check whether your save folder is writable."));
 								returnCode = 1;
 								break;
 							}
@@ -249,19 +246,28 @@ public final class Core {
 						}
 					}
 
-					// Consume stamina only when starting gameplay.
-					if (!StaminaManager.getInstance()
-							.tryConsumeForRun()) {
-						LOGGER.info(
-								"Run blocked: not enough stamina.");
-
-						returnCode = 1;
+					// Endless charges once for the whole run. Story charges at the
+					// start of every level attempt, including a retry after game over.
+					if (endless && !StaminaManager.getInstance().tryConsumeForRun()) {
+						LOGGER.info("Endless run blocked: stamina could not be consumed.");
+						currentScreen = new TitleScreen(width, height, FPS, true);
+						returnCode = frame.setScreen(currentScreen);
 						break;
 					}
 
 					boolean exitStoryAfterClear = false;
 
 					do {
+						if (!endless) {
+							if (!StaminaManager.getInstance().tryConsumeForRun()) {
+								LOGGER.info("Story level blocked: not enough stamina.");
+								// Do not bank pending diamonds when stamina blocks the next attempt.
+								currentScreen = new TitleScreen(width, height, FPS, true);
+								returnCode = frame.setScreen(currentScreen);
+								staminaBlocked = true;
+								break;
+							}
+						}
 						int currentLevel = gameState.getLevel();
 
 						boolean bonusLife =
@@ -412,12 +418,16 @@ public final class Core {
 									&& (endless
 									|| gameState.getLevel() <= NUM_LEVELS));
 
+					if (staminaBlocked) {
+						break;
+					}
+
 					if (!endless && exitStoryAfterClear) {
 						returnCode = 1;
 						break;
 					}
 
-					// Endless Mode retains its original settlement.
+					// Endless Mode retains its existing diamond settlement.
 					gameState = endless
 							? settlePendingDiamonds(gameState)
 							: withPendingDiamonds(gameState, 0);

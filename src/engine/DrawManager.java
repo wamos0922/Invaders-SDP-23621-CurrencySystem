@@ -1173,10 +1173,19 @@ public final class DrawManager {
 	 *            Item the cursor is on.
 	 */
 	public void drawMenu(final Screen screen, final MenuItem selected) {
+		int stamina = StaminaManager.getInstance().getStamina();
 		for (MenuItem item : MenuItem.values())
 			drawMenuRow(screen, item.getTitle(),
 					menuItemBaseline(screen, item.ordinal()),
-					item == selected, item.isEnabled());
+					item == selected, isMenuItemEnabled(item, stamina));
+	}
+
+	/** Story and Endless are visually disabled when no stamina is available. */
+	public static boolean isMenuItemEnabled(final MenuItem item,
+			final int stamina) {
+		return item.isEnabled()
+				&& (item != MenuItem.MAIN_STORY && item != MenuItem.ENDLESS
+				|| stamina > 0);
 	}
 
 	/** Draws the compact, clickable stamina and diamond status strip. */
@@ -2201,7 +2210,7 @@ public final class DrawManager {
 			final boolean enabled) {
 		if (selected) {
 			String text = "> " + string + " <";
-			backBufferGraphics.setColor(Color.GREEN);
+			backBufferGraphics.setColor(enabled ? Color.GREEN : Color.GRAY);
 			backBufferGraphics.setFont(fontSelected);
 			backBufferGraphics.drawString(text,
 					(screen.getWidth()
@@ -2209,7 +2218,7 @@ public final class DrawManager {
 					height);
 		} else {
 			backBufferGraphics.setColor(
-					enabled ? Color.WHITE : Color.DARK_GRAY);
+					enabled ? Color.WHITE : Color.GRAY);
 			drawCenteredRegularString(screen, string, height);
 		}
 	}
