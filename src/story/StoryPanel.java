@@ -1,23 +1,28 @@
 
 package story;
 
+import javax.imageio.ImageIO;
 import javax.sound.sampled.*;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Story Mode cutscene player.
  *
- * - Black background
+ * - Background images for Panels 1-5
+ * - Backgrounds fill the scene rectangle without stretching
+ * - Center-crops images to remove black gaps
+ * - Pixel-art nearest-neighbor rendering
  * - Emotion-based character portraits
- * - Portraits aligned to top-left of dialogue box
- * - No additional portrait borders
  * - Typing sound
- * - Skip button and ESC shortcut
+ * - SKIP button and ESC shortcut
  */
 public class StoryPanel extends JPanel {
 
@@ -29,7 +34,6 @@ public class StoryPanel extends JPanel {
 
     private static final Color GREEN = Color.GREEN;
     private static final Color WHITE = Color.WHITE;
-
     private static final Color GRAY =
             new Color(165, 170, 180);
 
@@ -56,9 +60,34 @@ public class StoryPanel extends JPanel {
     private static final Rectangle SKIP_BUTTON =
             new Rectangle(345, 17, 83, 34);
 
-    // Portrait positioning inside the dialogue box.
+    // =========================================
+    // PORTRAIT CONFIGURATION
+    // =========================================
+
     private static final int PORTRAIT_OFFSET_X = 8;
     private static final int PORTRAIT_OFFSET_Y = 8;
+
+    // =========================================
+    // SCENE BACKGROUND CONFIGURATION
+    // =========================================
+
+    private static final String PANEL_FOLDER =
+            "res/panel/";
+
+    // The rectangle above the dialogue box.
+    private static final int SCENE_X = 14;
+    private static final int SCENE_Y = 82;
+    private static final int SCENE_WIDTH = WIDTH - 28;
+    private static final int SCENE_HEIGHT = 194;
+
+    private final Map<Integer, BufferedImage> sceneCache =
+            new HashMap<>();
+
+    private BufferedImage currentSceneImage;
+
+    // =========================================
+    // STORY STATE
+    // =========================================
 
     private final int lastPanel;
     private final Runnable onFinished;
@@ -90,9 +119,9 @@ public class StoryPanel extends JPanel {
             int lastPanel,
             Runnable onFinished) throws IOException {
 
-        if (firstPanel < 1
-                || lastPanel > 33
-                || firstPanel > lastPanel) {
+        if (firstPanel < 1 ||
+                lastPanel > 33 ||
+                firstPanel > lastPanel) {
 
             throw new IllegalArgumentException(
                     "Invalid story panel range"
@@ -102,10 +131,7 @@ public class StoryPanel extends JPanel {
         this.lastPanel = lastPanel;
         this.onFinished = onFinished;
 
-        setPreferredSize(
-                new Dimension(WIDTH, HEIGHT)
-        );
-
+        setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.BLACK);
         setFocusable(true);
         setDoubleBuffered(true);
@@ -141,23 +167,9 @@ public class StoryPanel extends JPanel {
 
     private void setupControls() {
 
-        bindKey(
-                "SPACE",
-                "nextSpace",
-                this::advance
-        );
-
-        bindKey(
-                "ENTER",
-                "nextEnter",
-                this::advance
-        );
-
-        bindKey(
-                "ESCAPE",
-                "skipCutscene",
-                this::skipCutscene
-        );
+        bindKey("SPACE", "nextSpace", this::advance);
+        bindKey("ENTER", "nextEnter", this::advance);
+        bindKey("ESCAPE", "skipCutscene", this::skipCutscene);
 
         MouseAdapter mouse = new MouseAdapter() {
 
@@ -268,7 +280,6 @@ public class StoryPanel extends JPanel {
         }
 
         finished = true;
-
         close();
 
         if (onFinished != null) {
@@ -320,11 +331,10 @@ public class StoryPanel extends JPanel {
     }
 
     // =========================================
-    // STORY LOADING
+    // LOAD STORY PANEL
     // =========================================
 
-    private void loadPanel(int number)
-            throws IOException {
+    private void loadPanel(int number) throws IOException {
 
         List<Dialogue> dialogues =
                 StoryData.loadPanel(number);
@@ -334,8 +344,78 @@ public class StoryPanel extends JPanel {
         dialogueManager =
                 new DialogueManager(dialogues);
 
+        // Load background corresponding to this panel.
+        currentSceneImage = loadSceneImage(number);
+
         startTyping();
     }
+
+    // =========================================
+    // LOAD BACKGROUND IMAGE
+    // =========================================
+
+    private BufferedImage loadSceneImage(int number) {
+
+        // Only panels 1-5 currently have backgrounds.
+        if (number < 1 || number > 5) {
+            return null;
+        }
+
+        if (sceneCache.containsKey(number)) {
+            return sceneCache.get(number);
+        }
+
+        String path =
+                PANEL_FOLDER + "panel" + number + ".png";
+
+        BufferedImage image = null;
+
+        try {
+
+            File file = new File(path);
+
+            if (file.isFile()) {
+
+                image = ImageIO.read(file);
+
+                if (image != null) {
+
+                    System.out.println(
+                            "[STORY] Loaded background: " + path
+                    );
+
+                } else {
+
+                    System.err.println(
+                            "[STORY] Unsupported background: " + path
+                    );
+                }
+
+            } else {
+
+                System.err.println(
+                        "[STORY] Missing background: " + path
+                );
+            }
+
+        } catch (IOException e) {
+
+            System.err.println(
+                    "[STORY] Failed to load: "
+                            + path
+                            + " - "
+                            + e.getMessage()
+            );
+        }
+
+        sceneCache.put(number, image);
+
+        return image;
+    }
+
+    // =========================================
+    // TYPING ANIMATION
+    // =========================================
 
     private void startTyping() {
 
@@ -345,9 +425,8 @@ public class StoryPanel extends JPanel {
         visibleCharacters = 0;
         lettersSinceSound = 0;
 
-        if (!finished
-                && dialogueManager.getCurrentDialogue()
-                != null) {
+        if (!finished &&
+                dialogueManager.getCurrentDialogue() != null) {
 
             typingTimer.start();
         }
@@ -358,7 +437,6 @@ public class StoryPanel extends JPanel {
     private void updateTyping() {
 
         if (finished) {
-
             typingTimer.stop();
             return;
         }
@@ -367,7 +445,6 @@ public class StoryPanel extends JPanel {
                 dialogueManager.getCurrentDialogue();
 
         if (current == null) {
-
             typingTimer.stop();
             stopSound();
             return;
@@ -385,7 +462,6 @@ public class StoryPanel extends JPanel {
                 lettersSinceSound++;
 
                 if (lettersSinceSound >= SOUND_INTERVAL) {
-
                     playSound();
                     lettersSinceSound = 0;
                 }
@@ -393,7 +469,6 @@ public class StoryPanel extends JPanel {
         }
 
         if (visibleCharacters >= text.length()) {
-
             typingTimer.stop();
             stopSound();
         }
@@ -418,11 +493,10 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // First click reveals the whole line.
+        // Reveal the current sentence on first click.
         if (visibleCharacters < current.getText().length()) {
 
-            visibleCharacters =
-                    current.getText().length();
+            visibleCharacters = current.getText().length();
 
             typingTimer.stop();
             stopSound();
@@ -431,20 +505,18 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // Move to the next dialogue.
+        // Move to next dialogue.
         dialogueManager.advanceDialogue();
 
         if (!dialogueManager.isFinished()) {
-
             startTyping();
             return;
         }
 
-        // Move to the next panel.
+        // Move to next panel.
         if (panelNumber < lastPanel) {
 
             try {
-
                 loadPanel(panelNumber + 1);
 
             } catch (IOException e) {
@@ -492,6 +564,7 @@ public class StoryPanel extends JPanel {
                 RenderingHints.VALUE_TEXT_ANTIALIAS_OFF
         );
 
+        // Keep pixel art sharp.
         g.setRenderingHint(
                 RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR
@@ -507,19 +580,13 @@ public class StoryPanel extends JPanel {
     }
 
     // =========================================
-    // BACKGROUND
+    // BLACK BACKGROUND
     // =========================================
 
     private void drawBackground(Graphics2D g) {
 
         g.setColor(Color.BLACK);
-
-        g.fillRect(
-                0,
-                0,
-                WIDTH,
-                HEIGHT
-        );
+        g.fillRect(0, 0, WIDTH, HEIGHT);
     }
 
     // =========================================
@@ -531,11 +598,7 @@ public class StoryPanel extends JPanel {
         g.setColor(GREEN);
         g.setFont(TITLE_FONT);
 
-        g.drawString(
-                "STORY MODE",
-                20,
-                35
-        );
+        g.drawString("STORY MODE", 20, 35);
 
         g.setColor(GRAY);
         g.setFont(SMALL_FONT);
@@ -547,28 +610,103 @@ public class StoryPanel extends JPanel {
         );
 
         int progressWidth =
-                (int) (
-                        WIDTH * panelNumber / 33.0
-                );
+                (int) (WIDTH * panelNumber / 33.0);
 
-        g.setColor(
-                new Color(45, 65, 50)
-        );
-
-        g.fillRect(
-                0,
-                72,
-                WIDTH,
-                3
-        );
+        g.setColor(new Color(45, 65, 50));
+        g.fillRect(0, 72, WIDTH, 3);
 
         g.setColor(GREEN);
+        g.fillRect(0, 72, progressWidth, 3);
+    }
 
-        g.fillRect(
-                0,
-                72,
-                progressWidth,
-                3
+    // =========================================
+    // SCENE IMAGE — FILL WITHOUT STRETCHING
+    // =========================================
+
+    private void drawScene(Graphics2D g) {
+
+        if (currentSceneImage == null) {
+            return;
+        }
+
+        int imageWidth = currentSceneImage.getWidth();
+        int imageHeight = currentSceneImage.getHeight();
+
+        if (imageWidth <= 0 || imageHeight <= 0) {
+            return;
+        }
+
+        // We use center-cropping instead of stretching.
+        // The source area is chosen to match the
+        // aspect ratio of the scene rectangle.
+
+        int cropX = 0;
+        int cropY = 0;
+        int cropWidth = imageWidth;
+        int cropHeight = imageHeight;
+
+        double imageRatio =
+                imageWidth / (double) imageHeight;
+
+        double sceneRatio =
+                SCENE_WIDTH / (double) SCENE_HEIGHT;
+
+        if (imageRatio > sceneRatio) {
+
+            // Image is wider than the scene rectangle.
+            // Crop equal amounts from left and right.
+            cropWidth = Math.max(
+                    1,
+                    (int) Math.round(
+                            imageHeight * sceneRatio
+                    )
+            );
+
+            cropWidth = Math.min(cropWidth, imageWidth);
+
+            cropX = (imageWidth - cropWidth) / 2;
+
+        } else if (imageRatio < sceneRatio) {
+
+            // Image is taller than the scene rectangle.
+            // Crop equal amounts from top and bottom.
+            cropHeight = Math.max(
+                    1,
+                    (int) Math.round(
+                            imageWidth / sceneRatio
+                    )
+            );
+
+            cropHeight = Math.min(cropHeight, imageHeight);
+
+            cropY = (imageHeight - cropHeight) / 2;
+        }
+
+        // Destination: fills the ENTIRE scene rectangle.
+        int destX1 = SCENE_X;
+        int destY1 = SCENE_Y;
+        int destX2 = SCENE_X + SCENE_WIDTH;
+        int destY2 = SCENE_Y + SCENE_HEIGHT;
+
+        // Source: center-cropped portion of the image.
+        int srcX1 = cropX;
+        int srcY1 = cropY;
+        int srcX2 = cropX + cropWidth;
+        int srcY2 = cropY + cropHeight;
+
+        // Draw with nearest-neighbor interpolation.
+        // No black gaps and no deliberate stretching.
+        g.drawImage(
+                currentSceneImage,
+                destX1,
+                destY1,
+                destX2,
+                destY2,
+                srcX1,
+                srcY1,
+                srcX2,
+                srcY2,
+                null
         );
     }
 
@@ -592,9 +730,7 @@ public class StoryPanel extends JPanel {
         g.fillRect(x, y, w, h);
 
         g.setColor(
-                skipHovered
-                        ? GREEN
-                        : BOX_BORDER
+                skipHovered ? GREEN : BOX_BORDER
         );
 
         g.drawRect(x, y, w, h);
@@ -603,30 +739,15 @@ public class StoryPanel extends JPanel {
         g.fillRect(x, y, 9, 3);
         g.fillRect(x, y, 3, 9);
 
-        g.fillRect(
-                x + w - 9,
-                y,
-                9,
-                3
-        );
-
-        g.fillRect(
-                x + w - 3,
-                y,
-                3,
-                9
-        );
+        g.fillRect(x + w - 9, y, 9, 3);
+        g.fillRect(x + w - 3, y, 3, 9);
 
         g.setFont(SMALL_FONT);
-
-        g.setColor(
-                skipHovered ? WHITE : GREEN
-        );
+        g.setColor(skipHovered ? WHITE : GREEN);
 
         String label = "SKIP >";
 
-        FontMetrics metrics =
-                g.getFontMetrics();
+        FontMetrics metrics = g.getFontMetrics();
 
         int textX =
                 x + (w - metrics.stringWidth(label)) / 2;
@@ -635,21 +756,7 @@ public class StoryPanel extends JPanel {
                 y + (h - metrics.getHeight()) / 2
                         + metrics.getAscent();
 
-        g.drawString(
-                label,
-                textX,
-                textY
-        );
-    }
-
-    // =========================================
-    // SCENE AREA
-    // =========================================
-
-    private void drawScene(Graphics2D g) {
-
-        // Reserved for future background illustrations,
-        // full-body character sprites and story scenes.
+        g.drawString(label, textX, textY);
     }
 
     // =========================================
@@ -663,25 +770,13 @@ public class StoryPanel extends JPanel {
         final int boxW = WIDTH - 28;
         final int boxH = 220;
 
-        // Main dialogue box background.
+        // Main dialogue background.
         g.setColor(BOX_BG);
+        g.fillRect(boxX, boxY, boxW, boxH);
 
-        g.fillRect(
-                boxX,
-                boxY,
-                boxW,
-                boxH
-        );
-
-        // Main dialogue box border.
+        // Main dialogue border.
         g.setColor(BOX_BORDER);
-
-        g.drawRect(
-                boxX,
-                boxY,
-                boxW,
-                boxH
-        );
+        g.drawRect(boxX, boxY, boxW, boxH);
 
         // Decorative corners.
         g.setColor(GREEN);
@@ -689,33 +784,11 @@ public class StoryPanel extends JPanel {
         g.fillRect(boxX, boxY, 16, 3);
         g.fillRect(boxX, boxY, 3, 16);
 
-        g.fillRect(
-                boxX + boxW - 16,
-                boxY,
-                16,
-                3
-        );
+        g.fillRect(boxX + boxW - 16, boxY, 16, 3);
+        g.fillRect(boxX + boxW - 3, boxY, 3, 16);
 
-        g.fillRect(
-                boxX + boxW - 3,
-                boxY,
-                3,
-                16
-        );
-
-        g.fillRect(
-                boxX,
-                boxY + boxH - 3,
-                16,
-                3
-        );
-
-        g.fillRect(
-                boxX,
-                boxY + boxH - 16,
-                3,
-                16
-        );
+        g.fillRect(boxX, boxY + boxH - 3, 16, 3);
+        g.fillRect(boxX, boxY + boxH - 16, 3, 16);
 
         g.fillRect(
                 boxX + boxW - 16,
@@ -745,17 +818,12 @@ public class StoryPanel extends JPanel {
         int textX;
 
         // =====================================
-        // TOP-LEFT CHARACTER PORTRAIT
+        // CHARACTER PORTRAITS
         // =====================================
 
         if (!narration &&
                 StoryPortraits.hasPortrait(current)) {
 
-            // Image begins near the top-left
-            // corner of the dialogue box.
-            //
-            // The PNG already contains its border,
-            // so no additional portrait frame is drawn.
             StoryPortraits.draw(
                     g,
                     current,
@@ -763,13 +831,9 @@ public class StoryPanel extends JPanel {
                     boxY + PORTRAIT_OFFSET_Y
             );
 
-            // Reserve space for the portrait.
             textX = boxX + 125;
 
         } else {
-
-            // Narration and characters without portraits
-            // use the entire dialogue width.
             textX = boxX + 20;
         }
 
@@ -786,10 +850,7 @@ public class StoryPanel extends JPanel {
                 boxY + 32
         );
 
-        // Divider under speaker name.
-        g.setColor(
-                new Color(45, 90, 55)
-        );
+        g.setColor(new Color(45, 90, 55));
 
         g.drawLine(
                 textX,
@@ -802,8 +863,7 @@ public class StoryPanel extends JPanel {
         // DIALOGUE TEXT
         // =====================================
 
-        String fullText =
-                current.getText();
+        String fullText = current.getText();
 
         String visibleText =
                 fullText.substring(
@@ -820,8 +880,7 @@ public class StoryPanel extends JPanel {
         int availableWidth =
                 boxX + boxW - textX - 20;
 
-        Shape oldClip =
-                g.getClip();
+        Shape oldClip = g.getClip();
 
         g.clipRect(
                 textX,
@@ -899,19 +958,16 @@ public class StoryPanel extends JPanel {
             int y,
             int maxWidth) {
 
-        FontMetrics metrics =
-                g.getFontMetrics();
+        FontMetrics metrics = g.getFontMetrics();
 
         String[] paragraphs =
                 text.split("\n", -1);
 
         for (String paragraph : paragraphs) {
 
-            StringBuilder line =
-                    new StringBuilder();
+            StringBuilder line = new StringBuilder();
 
-            for (String word :
-                    paragraph.split("\\s+")) {
+            for (String word : paragraph.split("\\s+")) {
 
                 if (word.isEmpty()) {
                     continue;
@@ -933,14 +989,11 @@ public class StoryPanel extends JPanel {
                     );
 
                     y += LINE_SPACING;
-
-                    line =
-                            new StringBuilder(word);
+                    line = new StringBuilder(word);
 
                 } else {
 
-                    line =
-                            new StringBuilder(candidate);
+                    line = new StringBuilder(candidate);
                 }
             }
 
@@ -970,7 +1023,6 @@ public class StoryPanel extends JPanel {
 
             typingSound.stop();
             typingSound.close();
-
             typingSound = null;
         }
     }
