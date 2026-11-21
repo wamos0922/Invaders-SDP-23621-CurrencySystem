@@ -35,6 +35,14 @@ public final class StaminaUiTest {
                 "one or two stamina should use the yellow battery colour");
         check(new Color(245, 65, 65).equals(DrawManager.staminaColor(0, 5)),
                 "zero stamina should use the red battery colour");
+        check(!TitleScreen.shouldCloseStaminaInfo(false, true, true),
+                "the mouse press that opens the popup should be ignored");
+        check(!TitleScreen.shouldCloseStaminaInfo(false, false, false),
+                "releasing the opening click should leave the popup open");
+        check(TitleScreen.shouldCloseStaminaInfo(false, true, false),
+                "a new mouse click should close the popup");
+        check(TitleScreen.shouldCloseStaminaInfo(true, false, true),
+                "the confirm/keyboard close action should close the popup");
         System.out.println("StaminaUiTest: " + checks + " checks passed");
     }
 
