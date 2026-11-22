@@ -76,6 +76,7 @@ public final class BulletPool {
 		bullet.setPositionY(positionY);
 		bullet.setSpeed(speed);
 		bullet.setSpeedX(0);
+		bullet.setFreezing(false);
 		bullet.setSprite();
 	}
 

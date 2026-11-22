@@ -166,6 +166,21 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 		for (List<EnemyShip> column : this.enemyShips) {
 			for (int i = 0; i < this.nShipsHigh; i++) {
+				int positionIndex = i * this.nShipsWide
+						+ this.enemyShips.indexOf(column);
+				int health = elitePositions.contains(positionIndex) ? 2 : 1;
+				int shipX = (SEPARATION_DISTANCE
+						* this.enemyShips.indexOf(column)) + positionX;
+				int shipY = (SEPARATION_DISTANCE * i) + positionY;
+
+				// Story levels can set a type per row (GOG-84).
+				EnemyType type = gameSettings.getRowType(i);
+				if (type.hasOwnSprites()) {
+					column.add(new EnemyShip(shipX, shipY, type, health));
+					this.shipCount++;
+					continue;
+				}
+
 				if (i / (float) this.nShipsHigh < PROPORTION_C)
 					spriteType = SpriteType.EnemyShipC1;
 				else if (i / (float) this.nShipsHigh < PROPORTION_B
@@ -174,13 +189,7 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 				else
 					spriteType = SpriteType.EnemyShipA1;
 
-				int positionIndex = i * this.nShipsWide
-						+ this.enemyShips.indexOf(column);
-				int health = elitePositions.contains(positionIndex) ? 2 : 1;
-				column.add(new EnemyShip((SEPARATION_DISTANCE 
-						* this.enemyShips.indexOf(column))
-								+ positionX, (SEPARATION_DISTANCE * i)
-								+ positionY, spriteType, health));
+				column.add(new EnemyShip(shipX, shipY, spriteType, health));
 				this.shipCount++;
 			}
 		}
@@ -475,8 +484,29 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-			bullets.add(BulletPool.getBullet(shooter.getPositionX()
-					+ shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+			int centerX = shooter.getPositionX() + shooter.width / 2;
+			int y = shooter.getPositionY();
+			switch (shooter.getType()) {
+			case JELLY:
+				// Double shot: two bullets spreading in a cone (GOG-84).
+				Bullet left = BulletPool.getBullet(centerX, y, BULLET_SPEED);
+				left.setSpeedX(-EnemyType.DOUBLE_SHOT_SPREAD);
+				bullets.add(left);
+				Bullet right = BulletPool.getBullet(centerX, y, BULLET_SPEED);
+				right.setSpeedX(EnemyType.DOUBLE_SHOT_SPREAD);
+				bullets.add(right);
+				break;
+			case POLAR:
+				// Freeze bullet: locks the ship instead of taking a life.
+				Bullet freezeBullet = BulletPool.getBullet(centerX, y,
+						BULLET_SPEED);
+				freezeBullet.setFreezing(true);
+				bullets.add(freezeBullet);
+				break;
+			default:
+				bullets.add(BulletPool.getBullet(centerX, y, BULLET_SPEED));
+				break;
+			}
 		}
 	}
 

@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import entity.EnemyType;
+
 import screen.TutorialScreen;
 import story.StoryPanel;
 import story.NameEntryPanel;
@@ -35,6 +37,39 @@ public final class StoryMode {
     public static final int LEVELS_PER_CHAPTER = 10;
 
     private static String playerName = "Protagonist";
+
+    /**
+     * GOG-84: enemy rows of Act 2 levels 11-19, top (back) to bottom
+     * (front), 5 enemies per row. Row counts follow the Game Design Draft
+     * (2, 2, 3, 3, 4, 4, 4, 5, 5). Levels 11-13 bring in one special type
+     * each; from level 14 the types mix and special rows grow. Polar stays
+     * at the back, Beetle at the front.
+     */
+    private static final EnemyType[][] ACT2_ROWS = {
+            // 11: Beetle arrives
+            {EnemyType.STORM_KING, EnemyType.BEETLE},
+            // 12: Jelly arrives
+            {EnemyType.STORM_KING, EnemyType.JELLY},
+            // 13: Polar arrives
+            {EnemyType.POLAR, EnemyType.STORM_KING, EnemyType.CLOUD_RAY},
+            // 14: 2 special rows
+            {EnemyType.POLAR, EnemyType.CLOUD_RAY, EnemyType.BEETLE},
+            // 15: 2 special rows
+            {EnemyType.STORM_KING, EnemyType.JELLY, EnemyType.CLOUD_RAY,
+                    EnemyType.BEETLE},
+            // 16: 3 special rows
+            {EnemyType.POLAR, EnemyType.STORM_KING, EnemyType.JELLY,
+                    EnemyType.BEETLE},
+            // 17: 4 special rows
+            {EnemyType.POLAR, EnemyType.JELLY, EnemyType.JELLY,
+                    EnemyType.BEETLE},
+            // 18: 4 special rows
+            {EnemyType.POLAR, EnemyType.STORM_KING, EnemyType.JELLY,
+                    EnemyType.JELLY, EnemyType.BEETLE},
+            // 19: all special
+            {EnemyType.POLAR, EnemyType.JELLY, EnemyType.JELLY,
+                    EnemyType.BEETLE, EnemyType.BEETLE},
+    };
 
     private static final List<GameSettings> SETTINGS =
             createSettings();
@@ -655,6 +690,21 @@ public final class StoryMode {
             // Every third stage uses diagonal movement.
             boolean diagonalMovement =
                     stage % 3 == 0;
+
+            // GOG-84: Act 2 levels 11-19 use the Game Design Draft row
+            // counts and the Jupiter enemies.
+            if (chapter == 2 && stage <= ACT2_ROWS.length) {
+                EnemyType[] rows = ACT2_ROWS[stage - 1];
+                settings.add(
+                        new GameSettings(
+                                width,
+                                rows.length,
+                                speed,
+                                shooting,
+                                diagonalMovement)
+                                .withRowTypes(rows));
+                continue;
+            }
 
             settings.add(
                     new GameSettings(
