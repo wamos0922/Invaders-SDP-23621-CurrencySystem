@@ -127,6 +127,13 @@ public class Ship extends Entity {
 	private boolean blinking;
 	private boolean blinkOn;
 
+	/** Tint of the ship while frozen by a Polar bullet (GoG, GOG-84). */
+	private static final Color FROZEN_COLOR = EnemyType.FREEZE_BULLET_COLOR;
+	/** Time left frozen: no moving, no shooting (GoG, GOG-84). */
+	private Cooldown freezeCooldown;
+	/** True while the frozen tint is applied, to restore the colour once. */
+	private boolean frozenTint;
+
 	/**
 	 * Constructor, establishes the ship's properties.
 	 *
@@ -157,6 +164,7 @@ public class Ship extends Entity {
 		this.spriteType = this.idleSprite;
 		this.shootingCooldown = Core.getCooldown(type.shootingInterval);
 		this.destructionCooldown = Core.getCooldown(1000);
+		this.freezeCooldown = Core.getCooldown(EnemyType.FREEZE_MILLIS);
 
 		/**
 		 * AUTHORED BY: VFX TEAM (effection)
@@ -189,6 +197,8 @@ public class Ship extends Entity {
 	 * @return Checks if the bullet was shot correctly.
 	 */
 	public final boolean shoot(final Set<Bullet> bullets) {
+		if (isFrozen())
+			return false;
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
 			final int centerX = positionX + this.width / 2;
@@ -262,7 +272,7 @@ public class Ship extends Entity {
 	 */
 	public final void setSkinColor(final Color color) {
 		this.skinColor = color == null ? BASE_COLOR : color;
-		if (!this.blinkOn)
+		if (!this.blinkOn && !isFrozen())
 			setColor(this.skinColor);
 	}
 
@@ -304,6 +314,44 @@ public class Ship extends Entity {
 			setColor(this.blinkOn ? BLINK_COLOR : this.skinColor);
 			this.blinkCooldown.reset();
 		}
+
+		// Frozen by a Polar bullet: tinted until the freeze ends (GOG-84).
+		boolean frozen = isFrozen();
+		if (frozen)
+			setColor(FROZEN_COLOR);
+		else if (this.frozenTint)
+			setColor(this.blinkOn ? BLINK_COLOR : this.skinColor);
+		this.frozenTint = frozen;
+	}
+
+	/**
+	 * Freezes the ship for {@link EnemyType#FREEZE_MILLIS}: it can't move
+	 * or shoot (GoG, GOG-84). A freeze that lands while the ship is already
+	 * frozen is ignored, so the player can't be locked forever.
+	 *
+	 * @return True if the ship was frozen by this call.
+	 */
+	public final boolean freeze() {
+		if (isFrozen() || isDestroyed())
+			return false;
+		this.freezeCooldown.reset();
+		return true;
+	}
+
+	/** @return True while the ship is frozen and can't move or shoot. */
+	public final boolean isFrozen() {
+		return !this.freezeCooldown.checkFinished();
+	}
+
+	/**
+	 * Pushes the end of the freeze back by the time the game was paused,
+	 * so pausing doesn't use up the freeze.
+	 *
+	 * @param pausedMilliseconds
+	 *            How long the game was paused.
+	 */
+	public final void resumeAfterPause(final long pausedMilliseconds) {
+		this.freezeCooldown.delayBy(pausedMilliseconds);
 	}
 
 	/**
