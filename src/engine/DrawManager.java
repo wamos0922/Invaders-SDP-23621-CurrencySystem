@@ -165,7 +165,23 @@ public final class DrawManager {
 		MidBoss1,
 		MidBoss2,
 		FinalBoss1,
-		FinalBoss2
+		FinalBoss2,
+
+		/** Act 1 (Earth Escape) row 1: Overseer, AI command unit. */
+		Overseer1,
+		Overseer2,
+		/** Act 1 row 2: Hunter Jet, atmospheric interceptor. */
+		HunterJet1,
+		HunterJet2,
+		/** Act 1 row 3: Warden Bot, Human Prison guard. */
+		WardenBot1,
+		WardenBot2,
+		/** Act 1 row 4: Crawler, resource-mining spider mech. */
+		Crawler1,
+		Crawler2,
+		/** Act 1 row 5: Sentry Drone, floating surveillance eye. */
+		SentryDrone1,
+		SentryDrone2
 	};
 
 	/**
@@ -231,6 +247,18 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.ShipSkinD1, new boolean[13][8]);
 			spriteMap.put(SpriteType.ShipSkinD2, new boolean[13][8]);
 			spriteMap.put(SpriteType.ShipSkinD3, new boolean[13][8]);
+
+			// Act 1 (Earth Escape) enemies, one pair of frames per row.
+			spriteMap.put(SpriteType.Overseer1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Overseer2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HunterJet1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HunterJet2, new boolean[12][8]);
+			spriteMap.put(SpriteType.WardenBot1, new boolean[12][8]);
+			spriteMap.put(SpriteType.WardenBot2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Crawler1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Crawler2, new boolean[12][8]);
+			spriteMap.put(SpriteType.SentryDrone1, new boolean[12][8]);
+			spriteMap.put(SpriteType.SentryDrone2, new boolean[12][8]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
