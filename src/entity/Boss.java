@@ -27,4 +27,29 @@ public interface Boss {
 
     /** Draws attack and movement warnings, such as incoming bullet rain. */
     default void drawWarnings(final DrawManager drawManager) { }
+
+    /**
+     * Text shown in the middle of the screen before the boss appears, or
+     * null for none (GoG, GOG-75).
+     *
+     * @return Warning text, or null.
+     */
+    default String getWarningText() { return null; }
+
+    /**
+     * Keeps the boss's timers still while the game is paused.
+     *
+     * @param pausedMilliseconds How long the game was paused.
+     */
+    default void resumeAfterPause(final long pausedMilliseconds) { }
+
+    /**
+     * Enemies the boss called that the player can shoot, or an empty list
+     * (GoG, GOG-75: the Tempest Queen's phase 2 mobs).
+     *
+     * @return The boss's minions.
+     */
+    default java.util.List<EnemyShip> getMinions() {
+        return java.util.Collections.emptyList();
+    }
 }
