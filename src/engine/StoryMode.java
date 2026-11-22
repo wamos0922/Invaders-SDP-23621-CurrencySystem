@@ -36,6 +36,14 @@ public final class StoryMode {
 
     private static String playerName = "Protagonist";
 
+    /**
+     * Enemy rows for stages 1-9 of every chapter (game design draft):
+     * 2, 2, 3, 3, 4, 4, 4, 5, 5. Stage 10 is the boss level, which has
+     * no enemy rows.
+     */
+    private static final int[] ROWS_PER_STAGE =
+            {2, 2, 3, 3, 4, 4, 4, 5, 5, 4};
+
     private static final List<GameSettings> SETTINGS =
             createSettings();
 
@@ -545,42 +553,42 @@ public final class StoryMode {
 
         // Level 1
         settings.add(
-                new GameSettings(5, 2, 60, 2000));
+                new GameSettings(5, ROWS_PER_STAGE[0], 60, 2000));
 
         // Level 2
         settings.add(
-                new GameSettings(5, 3, 50, 2500));
+                new GameSettings(5, ROWS_PER_STAGE[1], 50, 2500));
 
         // Level 3
         settings.add(
-                new GameSettings(5, 4, 40, 2000, true));
+                new GameSettings(5, ROWS_PER_STAGE[2], 40, 2000, true));
 
         // Level 4
         settings.add(
-                new GameSettings(6, 4, 30, 1500));
+                new GameSettings(6, ROWS_PER_STAGE[3], 30, 1500));
 
         // Level 5
         settings.add(
-                new GameSettings(5, 4, 5, 1000));
+                new GameSettings(5, ROWS_PER_STAGE[4], 5, 1000));
 
         // Level 6
         settings.add(
                 new GameSettings(
-                        6, 3, 10, 1000,
+                        6, ROWS_PER_STAGE[5], 10, 1000,
                         Math.round(6 * 3 * 0.20f)));
 
         // Level 7
         settings.add(
-                new GameSettings(6, 4, 5, 500));
+                new GameSettings(6, ROWS_PER_STAGE[6], 5, 500));
 
         // Level 8
         settings.add(
-                new GameSettings(7, 4, 3, 500));
+                new GameSettings(7, ROWS_PER_STAGE[7], 3, 500));
 
         // Level 9
         settings.add(
                 new GameSettings(
-                        7, 5, 1, 300, true,
+                        7, ROWS_PER_STAGE[8], 1, 300, true,
                         Math.round(7 * 5 * 0.20f)));
 
         // Level 10
@@ -642,6 +650,9 @@ public final class StoryMode {
                             "Unexpected chapter: "
                                     + chapter);
             }
+
+            // Rows follow the game design draft pattern.
+            height = ROWS_PER_STAGE[stage - 1];
 
             // Increase difficulty each stage.
             speed = Math.max(

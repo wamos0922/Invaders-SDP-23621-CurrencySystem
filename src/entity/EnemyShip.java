@@ -25,6 +25,28 @@ public class EnemyShip extends Entity {
 	/** Point value of a bonus enemy. */
 	private static final int BONUS_TYPE_POINTS = 100;
 
+	/** Act 1 (Earth Escape) point values, row 5 (bottom) to row 1 (top). */
+	private static final int SENTRY_DRONE_POINTS = 10;
+	private static final int CRAWLER_POINTS = 20;
+	private static final int WARDEN_BOT_POINTS = 30;
+	private static final int HUNTER_JET_POINTS = 40;
+	private static final int OVERSEER_POINTS = 50;
+
+	// Act 1 colours, taken from Earth (design system tokens).
+	/** earth-cloud: Overseer. */
+	public static final Color EARTH_CLOUD = new Color(0xEEF3F7);
+	/** earth-sky: Hunter Jet. */
+	public static final Color EARTH_SKY = new Color(0x7FD4FF);
+	/** earth-land: Warden Bot. */
+	public static final Color EARTH_LAND = new Color(0x5CC86A);
+	/** earth-desert: Crawler. */
+	public static final Color EARTH_DESERT = new Color(0xE0AA5E);
+	/** earth-ocean: Sentry Drone. */
+	public static final Color EARTH_OCEAN = new Color(0x4A8CFF);
+
+	/** Colour the ship returns to once it is no longer a two-hit elite. */
+	private Color baseColor = Color.WHITE;
+
 	/** Cooldown between sprite changes. */
 	private Cooldown animationCooldown;
 	/** Checks if the ship has been hit by a bullet. */
@@ -73,10 +95,36 @@ public class EnemyShip extends Entity {
 		case EnemyShipC2:
 			this.pointValue = C_TYPE_POINTS;
 			break;
+		case Overseer1:
+		case Overseer2:
+			this.pointValue = OVERSEER_POINTS;
+			this.baseColor = EARTH_CLOUD;
+			break;
+		case HunterJet1:
+		case HunterJet2:
+			this.pointValue = HUNTER_JET_POINTS;
+			this.baseColor = EARTH_SKY;
+			break;
+		case WardenBot1:
+		case WardenBot2:
+			this.pointValue = WARDEN_BOT_POINTS;
+			this.baseColor = EARTH_LAND;
+			break;
+		case Crawler1:
+		case Crawler2:
+			this.pointValue = CRAWLER_POINTS;
+			this.baseColor = EARTH_DESERT;
+			break;
+		case SentryDrone1:
+		case SentryDrone2:
+			this.pointValue = SENTRY_DRONE_POINTS;
+			this.baseColor = EARTH_OCEAN;
+			break;
 		default:
 			this.pointValue = 0;
 			break;
 		}
+		setColor(this.baseColor);
 	}
 
 	/** Creates an ordinary enemy with configurable health and the same sprite. */
@@ -99,7 +147,7 @@ public class EnemyShip extends Entity {
 			return false;
 		this.health = Math.max(0, this.health - damage);
 		if (this.health == 1)
-			setColor(Color.WHITE);
+			setColor(this.baseColor);
 		return this.health == 0;
 	}
 
@@ -167,6 +215,36 @@ public class EnemyShip extends Entity {
 				break;
 			case EnemyShipC2:
 				this.spriteType = SpriteType.EnemyShipC1;
+				break;
+			case Overseer1:
+				this.spriteType = SpriteType.Overseer2;
+				break;
+			case Overseer2:
+				this.spriteType = SpriteType.Overseer1;
+				break;
+			case HunterJet1:
+				this.spriteType = SpriteType.HunterJet2;
+				break;
+			case HunterJet2:
+				this.spriteType = SpriteType.HunterJet1;
+				break;
+			case WardenBot1:
+				this.spriteType = SpriteType.WardenBot2;
+				break;
+			case WardenBot2:
+				this.spriteType = SpriteType.WardenBot1;
+				break;
+			case Crawler1:
+				this.spriteType = SpriteType.Crawler2;
+				break;
+			case Crawler2:
+				this.spriteType = SpriteType.Crawler1;
+				break;
+			case SentryDrone1:
+				this.spriteType = SpriteType.SentryDrone2;
+				break;
+			case SentryDrone2:
+				this.spriteType = SpriteType.SentryDrone1;
 				break;
 			default:
 				break;

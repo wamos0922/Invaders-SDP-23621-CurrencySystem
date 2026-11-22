@@ -127,6 +127,31 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 *            Current game settings.
 	 */
 	public EnemyShipFormation(final GameSettings gameSettings) {
+		this(gameSettings, false);
+	}
+
+	/**
+	 * Act 1 (Earth Escape) row designs, top (row 1, most valuable) to bottom
+	 * (row 5, weakest).
+	 */
+	private static final SpriteType[] EARTH_ROWS = {
+			SpriteType.Overseer1, SpriteType.HunterJet1,
+			SpriteType.WardenBot1, SpriteType.Crawler1,
+			SpriteType.SentryDrone1 };
+
+	/**
+	 * Constructor, sets the initial conditions.
+	 *
+	 * @param gameSettings
+	 *            Current game settings.
+	 * @param earthAct
+	 *            True to use the Act 1 (Earth Escape) enemies. Rows fill from
+	 *            the top in design order (Overseer, Hunter Jet, Warden Bot,
+	 *            Crawler, Sentry Drone). Act 1 enemies have no special powers,
+	 *            so the settings' two-hit enemies are ignored.
+	 */
+	public EnemyShipFormation(final GameSettings gameSettings,
+			final boolean earthAct) {
 		this.drawManager = Core.getDrawManager();
 		this.logger = Core.getLogger();
 		this.enemyShips = new ArrayList<List<EnemyShip>>();
@@ -161,12 +186,15 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		for (int i = 0; i < this.nShipsWide * this.nShipsHigh; i++)
 			positions.add(i);
 		Collections.shuffle(positions);
+		int twoHitCount = earthAct ? 0 : gameSettings.getTwoHitEnemyCount();
 		Set<Integer> elitePositions = new HashSet<Integer>(
-				positions.subList(0, gameSettings.getTwoHitEnemyCount()));
+				positions.subList(0, twoHitCount));
 
 		for (List<EnemyShip> column : this.enemyShips) {
 			for (int i = 0; i < this.nShipsHigh; i++) {
-				if (i / (float) this.nShipsHigh < PROPORTION_C)
+				if (earthAct)
+					spriteType = EARTH_ROWS[Math.min(i, EARTH_ROWS.length - 1)];
+				else if (i / (float) this.nShipsHigh < PROPORTION_C)
 					spriteType = SpriteType.EnemyShipC1;
 				else if (i / (float) this.nShipsHigh < PROPORTION_B
 						+ PROPORTION_C)

@@ -40,7 +40,6 @@ import entity.Coin;
 import entity.CoinPool;
 import entity.EnemyShip;
 import entity.Boss;
-import entity.MidBoss;
 import entity.FinalBoss;
 import entity.EnemyShipFormation;
 import entity.Entity;
@@ -370,19 +369,23 @@ public class GameScreen extends Screen {
 		this.ship = new Ship(this.width / 2, this.height - SHIP_ROW_FROM_BOTTOM,
 				Core.getSelectedShipType());
 
-		// Distinct mid-boss and final boss encounters (story mode only;
-		// endless waves are always formations for now, GOG-7).
-		// GOG-24: Reuse the existing Level 5 miniboss and Level 10
-		// final boss every 10 levels as placeholders for Ammar and Acap.
+		// Story mode boss levels (endless waves are always formations for
+		// now, GOG-7). Game design draft: only every 10th level (10, 20,
+		// 30, 40) has a boss; there is no mid-boss, so levels 5, 15, 25
+		// and 35 are normal formations. GOG-24: the existing final boss
+		// is the placeholder for every boss level.
 		if (!EndlessMode.isEnabled()
 				&& this.level >= 1
 				&& this.level <= 40
-				&& (this.level % 10 == 5 || this.level % 10 == 0)) {
-			this.midBoss = this.level % 10 == 5
-					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
-					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
+				&& this.level % 10 == 0) {
+			this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
+					DrawManager.SpriteType.FinalBoss1);
 		} else {
-			this.enemyShipFormation = new EnemyShipFormation(this.gameSettings);
+			// Act 1 (story levels 1-10) uses the Earth Escape enemies.
+			boolean earthAct = !EndlessMode.isEnabled()
+					&& this.level >= 1 && this.level <= 10;
+			this.enemyShipFormation = new EnemyShipFormation(
+					this.gameSettings, earthAct);
 			this.enemyShipFormation.attach(this);
 		}
 		// Skin chosen in Customize (GoG - Currency System).
