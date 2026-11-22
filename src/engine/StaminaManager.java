@@ -1,8 +1,9 @@
 package engine;
 
 /**
- * Owns the player's stamina, including run consumption and real-time
- * regeneration. Stamina is shared by Story Mode and Endless Mode.
+ * Owns the player's stamina and real-time regeneration. Stamina is shared
+ * by Story Mode and Endless Mode. Story Mode charges once per level attempt;
+ * Endless Mode charges once per run.
  *
  * The current amount and its regeneration timestamp are persisted together,
  * allowing regeneration to continue while the game is closed.
@@ -11,7 +12,7 @@ public final class StaminaManager {
 
     /** Maximum stamina a player can store. */
     public static final int MAX_STAMINA = 5;
-    /** Stamina charged when a new run starts. */
+    /** Stamina charged for each Story level attempt or each Endless run. */
     public static final int RUN_COST = 1;
     /** Milliseconds required to regenerate one stamina. */
     public static final long REGEN_INTERVAL_MILLIS = 10L * 60L * 1000L;
@@ -81,8 +82,10 @@ public final class StaminaManager {
     }
 
     /**
-     * Consumes stamina for a new Story or Endless run. Tester mode bypasses
-     * consumption without changing the player's saved stamina.
+     * Consumes stamina for one Story level attempt or one Endless run.
+     * Story Mode calls this once before each level; Endless calls it once
+     * before the run. Tester mode bypasses consumption without changing
+     * the player's saved stamina.
      *
      * @return true when the run may start; false when stamina is insufficient.
      */

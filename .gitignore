@@ -209,3 +209,7 @@ diamonds.tmp
 # Local player stamina save data
 stamina.properties
 /stamina-diamond-transaction.properties
+
+# Story level-completion rewards already claimed (GOG-38)
+/level-rewards
+/level-rewards.tmp
