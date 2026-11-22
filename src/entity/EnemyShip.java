@@ -44,7 +44,10 @@ public class EnemyShip extends Entity {
 	/** earth-ocean: Sentry Drone. */
 	public static final Color EARTH_OCEAN = new Color(0x4A8CFF);
 
-	/** Colour the ship returns to once it is no longer a two-hit elite. */
+	/**
+	 * Colour the ship returns to once it is no longer a two-hit elite or
+	 * shielded (Act 1 Earth colours, Act 2 types from GOG-84).
+	 */
 	private Color baseColor = Color.WHITE;
 
 	/** Cooldown between sprite changes. */
@@ -63,6 +66,10 @@ public class EnemyShip extends Entity {
 	private static final int FADE_TIME = 300;
 	/** Moment the ship was destroyed. */
 	private long destroyedAt;
+	/** Special type and ability (GoG, GOG-84); NORMAL for original ships. */
+	private EnemyType type = EnemyType.NORMAL;
+	/** Hits the shield can still absorb (Beetle), 0 when it has none. */
+	private int shield;
 
 	/**
 	 * Constructor, establishes the ship's properties.
@@ -134,8 +141,61 @@ public class EnemyShip extends Entity {
 		if (health < 1)
 			throw new IllegalArgumentException("Enemy health must be positive");
 		this.health = health;
-		if (health > 1)
+		refreshColor();
+	}
+
+	/**
+	 * Creates a story mode enemy of a given type (GoG, GOG-84): its own
+	 * sprites, colour, points and, for Beetle, a shield.
+	 *
+	 * @param positionX
+	 *            Initial position of the ship in the X axis.
+	 * @param positionY
+	 *            Initial position of the ship in the Y axis.
+	 * @param type
+	 *            Enemy type; must not be NORMAL.
+	 * @param health
+	 *            Hit points once the shield is broken.
+	 */
+	public EnemyShip(final int positionX, final int positionY,
+			final EnemyType type, final int health) {
+		this(positionX, positionY, requireSpecial(type).getFrameA(), health);
+		this.type = type;
+		this.pointValue = type.getPointValue();
+		this.shield = type.getShieldHits();
+		this.baseColor = type.getColor();
+		refreshColor();
+	}
+
+	/** Rejects NORMAL, which has no sprites of its own. */
+	private static EnemyType requireSpecial(final EnemyType type) {
+		if (type == null || !type.hasOwnSprites())
+			throw new IllegalArgumentException(
+					"Use the SpriteType constructor for normal enemies");
+		return type;
+	}
+
+	/**
+	 * Shield first, then extra health (yellow), then the base colour, so the
+	 * player can see how many hits are left.
+	 */
+	private void refreshColor() {
+		if (this.shield > 0)
+			setColor(EnemyType.SHIELD_COLOR);
+		else if (this.health > 1)
 			setColor(Color.YELLOW);
+		else
+			setColor(this.baseColor);
+	}
+
+	/** @return Special type of this enemy, NORMAL for original ships. */
+	public final EnemyType getType() {
+		return this.type;
+	}
+
+	/** @return Hits the shield can still absorb, 0 when it is down. */
+	public final int getShield() {
+		return this.shield;
 	}
 
 	/**
@@ -145,9 +205,14 @@ public class EnemyShip extends Entity {
 	public final boolean takeDamage(final int damage) {
 		if (damage <= 0 || this.isDestroyed || this.health == 0)
 			return false;
+		// Beetle's shield absorbs the whole hit (GOG-84).
+		if (this.shield > 0) {
+			this.shield--;
+			refreshColor();
+			return false;
+		}
 		this.health = Math.max(0, this.health - damage);
-		if (this.health == 1)
-			setColor(this.baseColor);
+		refreshColor();
 		return this.health == 0;
 	}
 
@@ -247,6 +312,10 @@ public class EnemyShip extends Entity {
 				this.spriteType = SpriteType.SentryDrone1;
 				break;
 			default:
+				// Story types swap between their own two frames.
+				if (this.type.hasOwnSprites() && !this.isDestroyed)
+					this.spriteType = this.spriteType == this.type.getFrameA()
+							? this.type.getFrameB() : this.type.getFrameA();
 				break;
 			}
 		}

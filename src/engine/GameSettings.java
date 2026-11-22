@@ -1,5 +1,7 @@
 package engine;
 
+import entity.EnemyType;
+
 /**
  * Implements an object that stores a single game's difficulty settings.
  *
@@ -20,6 +22,11 @@ public class GameSettings {
 	private int twoHitEnemyCount;
 	/** Whether the whole formation moves diagonally (Team A1). */
 	private boolean diagonalMovement;
+	/**
+	 * Enemy type of each formation row, top (back) to bottom (front)
+	 * (GoG, GOG-84). Null: the original A/B/C ships.
+	 */
+	private EnemyType[] rowTypes;
 
 	/**
 	 * Constructor.
@@ -115,6 +122,31 @@ public class GameSettings {
 	 */
 	public final int getShootingFrecuency() {
 		return shootingFrecuency;
+	}
+
+	/**
+	 * Sets the enemy type of every formation row (GoG, GOG-84).
+	 *
+	 * @param types
+	 *            One type per row, top (back) to bottom (front); must match
+	 *            the formation height.
+	 * @return These settings, to chain after the constructor.
+	 */
+	public final GameSettings withRowTypes(final EnemyType... types) {
+		if (types.length != this.formationHeight)
+			throw new IllegalArgumentException("Need one enemy type per row: "
+					+ this.formationHeight + " rows, " + types.length + " types");
+		this.rowTypes = types.clone();
+		return this;
+	}
+
+	/**
+	 * @param row
+	 *            Row index, 0 is the top (back) row.
+	 * @return Enemy type of that row, NORMAL when no row types are set.
+	 */
+	public final EnemyType getRowType(final int row) {
+		return this.rowTypes == null ? EnemyType.NORMAL : this.rowTypes[row];
 	}
 
 	/**
