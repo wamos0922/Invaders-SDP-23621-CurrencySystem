@@ -167,6 +167,12 @@ public final class DrawManager {
 		FinalBoss1,
 		FinalBoss2,
 
+		/** Story tutorial (GOG-31): security drone, first frame. */
+		TutorialDrone1,
+		/** Story tutorial (GOG-31): security drone, second frame. */
+		TutorialDrone2,
+		/** Story tutorial (GOG-31): power cell pickup. */
+		TutorialCell,
 		/** Act 1 (Earth Escape) row 1: Overseer, AI command unit. */
 		Overseer1,
 		Overseer2,
@@ -264,6 +270,10 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.ShipSkinD2, new boolean[13][8]);
 			spriteMap.put(SpriteType.ShipSkinD3, new boolean[13][8]);
 
+			// Story tutorial (GOG-31)
+			spriteMap.put(SpriteType.TutorialDrone1, new boolean[12][8]);
+			spriteMap.put(SpriteType.TutorialDrone2, new boolean[12][8]);
+			spriteMap.put(SpriteType.TutorialCell, new boolean[8][8]);
 			// Act 1 (Earth Escape) enemies, one pair of frames per row.
 			spriteMap.put(SpriteType.Overseer1, new boolean[12][8]);
 			spriteMap.put(SpriteType.Overseer2, new boolean[12][8]);
