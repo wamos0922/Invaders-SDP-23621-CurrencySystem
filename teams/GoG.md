@@ -18,7 +18,23 @@ Team members contain of student from Malaysia. We mainly focus on developing som
 | Ashrafuddin Fadhil | Database | [asyrafuddin](https://github.com/asyrafuddin) |
 | Akif | UI Designer | [abangBoy13](https://github.com/abangBoy13) |
 
-## Responsibilities
+## Second-half project: new game (Jira project GOG)
+
+For the second half we build a new game on top of the currency system. Each member owns their own features. Rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and the process is in [docs/PROCESS.md](../docs/PROCESS.md).
+
+| Member | Features |
+| --- | --- |
+| Haikal | Team lead; mode selection menu, bigger game screen, shard space mode, documentation and presentation |
+| Imran | Game modes (endless and story), free-roam movement, challenge modes |
+| Amani | Level-up cards, stamina system |
+| Ikhwan | Shards, upgrades, customize tab, weekly challenges |
+| Muizzuddin | Story mode (planet progression, story script, story UI) |
+| Wafi | Story content (planet content, tutorial, visuals and audio), shard designs |
+| Asyrafuddin | Enemy variants |
+| Nik Ammar | Boss design and implementation |
+| Akif | Tester and main PR reviewer (Ikhwan is 2nd, Haikal 3rd) |
+
+## Responsibilities (first half: currency system)
 
 # Team Requirements
 Our team is responsible for designing and managing the game's currency system. This includes handling currency earning, spending, balance management, reward scaling, and integration with gameplay systems.
@@ -43,4 +59,4 @@ Our team is responsible for designing and managing the game's currency system. T
 
 - Item System: Requires item prices and purchase requests to validate and deduct currency.
 - Level Design System: Requires level completion and difficulty information to calculate level bonuses and reward scaling.
-- Gameplay HUD & UI: Requires currency balance updates to display coins and diamonds during gameplay.
+- Gameplay HUD & UI: Requires currency balance updates to display coins and diamonds during gameplay.
