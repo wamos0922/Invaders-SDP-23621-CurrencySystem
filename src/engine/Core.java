@@ -485,6 +485,14 @@ public final class Core {
 					returnCode = frame.setScreen(currentScreen);
 					break;
 
+				case ItemsScreen.CODE:
+					// Items page, opened from Customize (GOG-50).
+					currentScreen =
+							new ItemsScreen(width, height, FPS);
+
+					returnCode = frame.setScreen(currentScreen);
+					break;
+
 				default:
 					LOGGER.warning(
 							"Unknown return code " + returnCode);
