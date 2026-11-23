@@ -2,9 +2,9 @@
 
 ## Branches
 - `main` — protected. No direct push. Changes arrive only through PRs.
-- `gog-<number>-<short-feature>` — one branch per feature, made from the latest `main`. Lowercase, hyphens only. Delete after merge.
-  - `gog-12-mode-select-menu`, `gog-30-enemy-variants`
-  - `<number>` is the Jira ticket number, so the branch shows up on the ticket.
+- `GOG-<number>-<short-feature>` — one branch per feature, made from the latest `main`. The key `GOG-<number>` is UPPERCASE (Jira only links branches whose key is uppercase); the rest is lowercase with hyphens. Delete after merge.
+  - `GOG-12-mode-select-menu`, `GOG-30-enemy-variants`
+  - `<number>` is the Jira ticket number, so the branch shows up on the ticket. Wrong: `gog-12-...` (lowercase key, Jira will not link it).
 
 ## Commits
 - Format: `<type>: <subject>` — see `.gitmessage.txt`. Enable it: `git config commit.template .gitmessage.txt`
@@ -20,10 +20,12 @@
 - Title: `<type>: <subject> (GOG-<number>)`, e.g. `feat: add mode select menu (GOG-12)`. Type first, lowercase. The key goes at the end in brackets, not as a scope. The title becomes the squash commit on `main`.
 - Description: fill the template. Put the ticket key and the reason under "Why". Screenshots for anything visible.
 - Merge latest `main` into your branch before requesting review. PRs with conflicts are not reviewed.
-- Request **1–2 reviewers**, not everyone.
+- Request **one reviewer** by priority: **Akif** (main), then **Ikhwan** (2nd, if Akif is unavailable or is the author), then **Haikal** (3rd). Nobody reviews their own PR.
 - Merge method: **Squash and merge**. Delete the branch.
 
 ## Reviews
+Reviewers, in order: Akif, Ikhwan, Haikal (see `docs/PROCESS.md`).
+
 Tag every comment with a priority so the author knows what is required:
 
 | Tag | Meaning | Reviewer action |
@@ -40,7 +42,7 @@ Approval must say **what you checked** in one line. "LGTM" alone is not a review
 
 ## Shared files — extra care
 `engine/DrawManager.java`, `engine/Core.java`, `screen/GameScreen.java` are used by every team.
-Any change there must be mentioned in the PR description and reviewed by the team that owns the file (menu framework: Hello World).
+Any change there must be mentioned in the PR description, and the reviewer checks it with extra care.
 
 ## Definition of Done
 - Code compiles (CI green) and the game runs
