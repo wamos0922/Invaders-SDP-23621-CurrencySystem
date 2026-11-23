@@ -61,6 +61,10 @@ public enum Sound {
 	GAME_OVER("sounds/game_over.wav", Category.SFX),
 	/** Level cleared with lives left. */
 	VICTORY("sounds/victory.wav", Category.SFX),
+	/** Story tutorial intro: the stolen ship powering up (GOG-31). */
+	SHIP_POWER_UP("sounds/ship_power_up.wav", Category.SFX),
+	/** Story tutorial: jet thrusters as the ship launches (GOG-31). */
+	SHIP_LAUNCH("sounds/ship_launch.wav", Category.SFX),
 
 	/** Background music of the title screen. */
 	BGM_TITLE("sounds/bgm_title.wav", Category.BGM),

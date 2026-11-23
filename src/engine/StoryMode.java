@@ -14,9 +14,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import screen.StoryTutorialScreen;
 import entity.EnemyType;
 
-import screen.TutorialScreen;
 import story.StoryPanel;
 import story.NameEntryPanel;
 
@@ -246,8 +246,8 @@ public final class StoryMode {
         System.out.println(
                 "[STORY] Starting tutorial.");
 
-        TutorialScreen tutorial =
-                new TutorialScreen(width, height, fps);
+        StoryTutorialScreen tutorial =
+                new StoryTutorialScreen(width, height, fps);
 
         int result = frame.setScreen(tutorial);
 
