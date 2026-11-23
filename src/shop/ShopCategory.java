@@ -21,11 +21,11 @@ public enum ShopCategory {
 	 */
 	SHAPE("Ship look"),
 	/**
-	 * Item System (Team CS) equipped item. Bought once (no levels), on as
-	 * soon as it is bought, switched on/off in Customize. Only one upgrade
-	 * can be on at once.
+	 * Item System (Team CS) equipped item, shown to players as an "Item"
+	 * (GOG-50). Bought once (no levels), equipped in Customize > Items:
+	 * 3 slots in Endless, 1 in Story.
 	 */
-	UPGRADE("Upgrade"),
+	UPGRADE("Item"),
 	
 	/**
 	 * Visual effect (VFX team, Effection). Bought once, on in every run
