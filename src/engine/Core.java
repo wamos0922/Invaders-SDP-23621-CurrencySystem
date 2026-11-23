@@ -20,6 +20,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import entity.Ship;
+import item.ItemSystem;
 import screen.*;
 import story.NameEntryPanel;
 
@@ -140,6 +141,10 @@ public final class Core {
 					}
 					boolean endless = returnCode == 8;
 					EndlessMode.setEnabled(endless);
+					// Equip this mode's items for the run (GOG-50).
+					ItemSystem.setRunEquipment(ItemLoadout.getInstance()
+							.getEquipped(endless ? ItemLoadout.Mode.ENDLESS
+									: ItemLoadout.Mode.STORY));
 
 					StorySaveManager.Slot activeSave =
 							ProfileSession.getActive();
@@ -481,6 +486,14 @@ public final class Core {
 				case 7:
 					currentScreen =
 							new ShipSelectScreen(width, height, FPS);
+
+					returnCode = frame.setScreen(currentScreen);
+					break;
+
+				case ItemsScreen.CODE:
+					// Items page, opened from Customize (GOG-50).
+					currentScreen =
+							new ItemsScreen(width, height, FPS);
 
 					returnCode = frame.setScreen(currentScreen);
 					break;
