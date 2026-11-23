@@ -17,7 +17,6 @@ import javax.swing.SwingUtilities;
 import screen.StoryTutorialScreen;
 import entity.EnemyType;
 
-import screen.TutorialScreen;
 import story.StoryPanel;
 import story.NameEntryPanel;
 
