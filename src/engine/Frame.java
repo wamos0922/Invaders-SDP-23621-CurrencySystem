@@ -1,6 +1,10 @@
 package engine;
 
 import java.awt.Insets;
+import java.awt.event.ContainerAdapter;
+import java.awt.event.ContainerEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
 
@@ -74,6 +78,24 @@ public class Frame extends JFrame {
 		getContentPane().addMouseMotionListener(Core.getInputManager());
 		getContentPane().addMouseListener(Core.getInputManager());
 
+		// Story panels, the profile menu and name entry replace the content
+		// pane and take keyboard focus, so key releases go to them instead of
+		// the InputManager. E.g. S skips the tutorial on press, the story
+		// panel then gets the release, and S stays "held": the level
+		// complete screen waits for all keys to be released and ignores
+		// Space and clicks forever. Forget held input whenever that happens.
+		getContentPane().addContainerListener(new ContainerAdapter() {
+			@Override
+			public void componentAdded(final ContainerEvent e) {
+				Core.getInputManager().releaseAll();
+			}
+		});
+		addWindowFocusListener(new WindowAdapter() {
+			@Override
+			public void windowLostFocus(final WindowEvent e) {
+				Core.getInputManager().releaseAll();
+			}
+		});
 	}
 	/**
 	 * Sets current screen.

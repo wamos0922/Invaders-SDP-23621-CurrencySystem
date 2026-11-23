@@ -40,7 +40,6 @@ import entity.Coin;
 import entity.CoinPool;
 import entity.EnemyShip;
 import entity.Boss;
-import entity.MidBoss;
 import entity.FinalBoss;
 import entity.EnemyShipFormation;
 import entity.Entity;
@@ -370,19 +369,23 @@ public class GameScreen extends Screen {
 		this.ship = new Ship(this.width / 2, this.height - SHIP_ROW_FROM_BOTTOM,
 				Core.getSelectedShipType());
 
-		// Distinct mid-boss and final boss encounters (story mode only;
-		// endless waves are always formations for now, GOG-7).
-		// GOG-24: Reuse the existing Level 5 miniboss and Level 10
-		// final boss every 10 levels as placeholders for Ammar and Acap.
+		// Story mode boss levels (endless waves are always formations for
+		// now, GOG-7). Game design draft: only every 10th level (10, 20,
+		// 30, 40) has a boss; there is no mid-boss, so levels 5, 15, 25
+		// and 35 are normal formations. GOG-24: the existing final boss
+		// is the placeholder for every boss level.
 		if (!EndlessMode.isEnabled()
 				&& this.level >= 1
 				&& this.level <= 40
-				&& (this.level % 10 == 5 || this.level % 10 == 0)) {
-			this.midBoss = this.level % 10 == 5
-					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
-					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
+				&& this.level % 10 == 0) {
+			this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
+					DrawManager.SpriteType.FinalBoss1);
 		} else {
-			this.enemyShipFormation = new EnemyShipFormation(this.gameSettings);
+			// Act 1 (story levels 1-10) uses the Earth Escape enemies.
+			boolean earthAct = !EndlessMode.isEnabled()
+					&& this.level >= 1 && this.level <= 10;
+			this.enemyShipFormation = new EnemyShipFormation(
+					this.gameSettings, earthAct);
 			this.enemyShipFormation.attach(this);
 		}
 		// Skin chosen in Customize (GoG - Currency System).
@@ -520,7 +523,9 @@ public class GameScreen extends Screen {
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
 
-			if (!this.ship.isDestroyed()) {
+			// A Polar freeze bullet locks moving and shooting (GOG-84);
+			// items can still be used.
+			if (!this.ship.isDestroyed() && !this.ship.isFrozen()) {
 				boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
 						|| inputManager.isKeyDown(KeyEvent.VK_D);
 				boolean moveLeft = inputManager.isKeyDown(KeyEvent.VK_LEFT)
@@ -548,8 +553,9 @@ public class GameScreen extends Screen {
 					if (this.ship.shoot(this.bullets))
 						this.bulletsShot += this.bullets.size() - bulletsBefore;
 				}
-				useItemSlots(); // Item System (Team CS)
 			}
+			if (!this.ship.isDestroyed())
+				useItemSlots(); // Item System (Team CS)
 
 			if (this.enemyShipSpecial != null) {
 				if (!this.enemyShipSpecial.isDestroyed())
@@ -861,6 +867,10 @@ public class GameScreen extends Screen {
 			((FinalBoss) this.midBoss).resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
+		// Pausing doesn't use up a freeze (GOG-84).
+		if (this.paused)
+			this.ship.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
 	}
@@ -1148,7 +1158,11 @@ public class GameScreen extends Screen {
 			if (bullet.getSpeed() > 0) {
 				if (checkCollision(bullet, this.ship) && !this.levelFinished) {
 					recyclable.add(bullet);
-					if (!this.ship.isDestroyed()
+					if (bullet.isFreezing()) {
+						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
+						if (this.ship.freeze())
+							this.logger.info("Player ship frozen by a Polar bullet.");
+					} else if (!this.ship.isDestroyed()
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
 						this.lives--;

@@ -172,7 +172,38 @@ public final class DrawManager {
 		/** Story tutorial (GOG-31): security drone, second frame. */
 		TutorialDrone2,
 		/** Story tutorial (GOG-31): power cell pickup. */
-		TutorialCell
+		TutorialCell,
+		/** Act 1 (Earth Escape) row 1: Overseer, AI command unit. */
+		Overseer1,
+		Overseer2,
+		/** Act 1 row 2: Hunter Jet, atmospheric interceptor. */
+		HunterJet1,
+		HunterJet2,
+		/** Act 1 row 3: Warden Bot, Human Prison guard. */
+		WardenBot1,
+		WardenBot2,
+		/** Act 1 row 4: Crawler, resource-mining spider mech. */
+		Crawler1,
+		Crawler2,
+		/** Act 1 row 5: Sentry Drone, floating surveillance eye. */
+		SentryDrone1,
+		SentryDrone2,
+
+		/** Act 2 (Jupiter) Polar / Spore Puff, two frames (GoG, GOG-84). */
+		Polar1,
+		Polar2,
+		/** Act 2 (Jupiter) Gas Jelly, two frames (GoG, GOG-84). */
+		Jelly1,
+		Jelly2,
+		/** Act 2 (Jupiter) Belt Beetle, two frames (GoG, GOG-84). */
+		Beetle1,
+		Beetle2,
+		/** Act 2 (Jupiter) Storm King, no ability, two frames (GoG, GOG-84). */
+		StormKing1,
+		StormKing2,
+		/** Act 2 (Jupiter) Cloud Ray, no ability, two frames (GoG, GOG-84). */
+		CloudRay1,
+		CloudRay2
 	};
 
 	/**
@@ -243,6 +274,29 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.TutorialDrone1, new boolean[12][8]);
 			spriteMap.put(SpriteType.TutorialDrone2, new boolean[12][8]);
 			spriteMap.put(SpriteType.TutorialCell, new boolean[8][8]);
+			// Act 1 (Earth Escape) enemies, one pair of frames per row.
+			spriteMap.put(SpriteType.Overseer1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Overseer2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HunterJet1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HunterJet2, new boolean[12][8]);
+			spriteMap.put(SpriteType.WardenBot1, new boolean[12][8]);
+			spriteMap.put(SpriteType.WardenBot2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Crawler1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Crawler2, new boolean[12][8]);
+			spriteMap.put(SpriteType.SentryDrone1, new boolean[12][8]);
+			spriteMap.put(SpriteType.SentryDrone2, new boolean[12][8]);
+
+			// Act 2 Jupiter enemies (GoG, GOG-84)
+			spriteMap.put(SpriteType.Polar1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Polar2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Jelly1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Jelly2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Beetle1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Beetle2, new boolean[12][8]);
+			spriteMap.put(SpriteType.StormKing1, new boolean[12][8]);
+			spriteMap.put(SpriteType.StormKing2, new boolean[12][8]);
+			spriteMap.put(SpriteType.CloudRay1, new boolean[12][8]);
+			spriteMap.put(SpriteType.CloudRay2, new boolean[12][8]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");

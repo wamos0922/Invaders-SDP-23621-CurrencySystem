@@ -25,6 +25,31 @@ public class EnemyShip extends Entity {
 	/** Point value of a bonus enemy. */
 	private static final int BONUS_TYPE_POINTS = 100;
 
+	/** Act 1 (Earth Escape) point values, row 5 (bottom) to row 1 (top). */
+	private static final int SENTRY_DRONE_POINTS = 10;
+	private static final int CRAWLER_POINTS = 20;
+	private static final int WARDEN_BOT_POINTS = 30;
+	private static final int HUNTER_JET_POINTS = 40;
+	private static final int OVERSEER_POINTS = 50;
+
+	// Act 1 colours, taken from Earth (design system tokens).
+	/** earth-cloud: Overseer. */
+	public static final Color EARTH_CLOUD = new Color(0xEEF3F7);
+	/** earth-sky: Hunter Jet. */
+	public static final Color EARTH_SKY = new Color(0x7FD4FF);
+	/** earth-land: Warden Bot. */
+	public static final Color EARTH_LAND = new Color(0x5CC86A);
+	/** earth-desert: Crawler. */
+	public static final Color EARTH_DESERT = new Color(0xE0AA5E);
+	/** earth-ocean: Sentry Drone. */
+	public static final Color EARTH_OCEAN = new Color(0x4A8CFF);
+
+	/**
+	 * Colour the ship returns to once it is no longer a two-hit elite or
+	 * shielded (Act 1 Earth colours, Act 2 types from GOG-84).
+	 */
+	private Color baseColor = Color.WHITE;
+
 	/** Cooldown between sprite changes. */
 	private Cooldown animationCooldown;
 	/** Checks if the ship has been hit by a bullet. */
@@ -41,6 +66,10 @@ public class EnemyShip extends Entity {
 	private static final int FADE_TIME = 300;
 	/** Moment the ship was destroyed. */
 	private long destroyedAt;
+	/** Special type and ability (GoG, GOG-84); NORMAL for original ships. */
+	private EnemyType type = EnemyType.NORMAL;
+	/** Hits the shield can still absorb (Beetle), 0 when it has none. */
+	private int shield;
 
 	/**
 	 * Constructor, establishes the ship's properties.
@@ -73,10 +102,36 @@ public class EnemyShip extends Entity {
 		case EnemyShipC2:
 			this.pointValue = C_TYPE_POINTS;
 			break;
+		case Overseer1:
+		case Overseer2:
+			this.pointValue = OVERSEER_POINTS;
+			this.baseColor = EARTH_CLOUD;
+			break;
+		case HunterJet1:
+		case HunterJet2:
+			this.pointValue = HUNTER_JET_POINTS;
+			this.baseColor = EARTH_SKY;
+			break;
+		case WardenBot1:
+		case WardenBot2:
+			this.pointValue = WARDEN_BOT_POINTS;
+			this.baseColor = EARTH_LAND;
+			break;
+		case Crawler1:
+		case Crawler2:
+			this.pointValue = CRAWLER_POINTS;
+			this.baseColor = EARTH_DESERT;
+			break;
+		case SentryDrone1:
+		case SentryDrone2:
+			this.pointValue = SENTRY_DRONE_POINTS;
+			this.baseColor = EARTH_OCEAN;
+			break;
 		default:
 			this.pointValue = 0;
 			break;
 		}
+		setColor(this.baseColor);
 	}
 
 	/** Creates an ordinary enemy with configurable health and the same sprite. */
@@ -86,8 +141,61 @@ public class EnemyShip extends Entity {
 		if (health < 1)
 			throw new IllegalArgumentException("Enemy health must be positive");
 		this.health = health;
-		if (health > 1)
+		refreshColor();
+	}
+
+	/**
+	 * Creates a story mode enemy of a given type (GoG, GOG-84): its own
+	 * sprites, colour, points and, for Beetle, a shield.
+	 *
+	 * @param positionX
+	 *            Initial position of the ship in the X axis.
+	 * @param positionY
+	 *            Initial position of the ship in the Y axis.
+	 * @param type
+	 *            Enemy type; must not be NORMAL.
+	 * @param health
+	 *            Hit points once the shield is broken.
+	 */
+	public EnemyShip(final int positionX, final int positionY,
+			final EnemyType type, final int health) {
+		this(positionX, positionY, requireSpecial(type).getFrameA(), health);
+		this.type = type;
+		this.pointValue = type.getPointValue();
+		this.shield = type.getShieldHits();
+		this.baseColor = type.getColor();
+		refreshColor();
+	}
+
+	/** Rejects NORMAL, which has no sprites of its own. */
+	private static EnemyType requireSpecial(final EnemyType type) {
+		if (type == null || !type.hasOwnSprites())
+			throw new IllegalArgumentException(
+					"Use the SpriteType constructor for normal enemies");
+		return type;
+	}
+
+	/**
+	 * Shield first, then extra health (yellow), then the base colour, so the
+	 * player can see how many hits are left.
+	 */
+	private void refreshColor() {
+		if (this.shield > 0)
+			setColor(EnemyType.SHIELD_COLOR);
+		else if (this.health > 1)
 			setColor(Color.YELLOW);
+		else
+			setColor(this.baseColor);
+	}
+
+	/** @return Special type of this enemy, NORMAL for original ships. */
+	public final EnemyType getType() {
+		return this.type;
+	}
+
+	/** @return Hits the shield can still absorb, 0 when it is down. */
+	public final int getShield() {
+		return this.shield;
 	}
 
 	/**
@@ -97,9 +205,14 @@ public class EnemyShip extends Entity {
 	public final boolean takeDamage(final int damage) {
 		if (damage <= 0 || this.isDestroyed || this.health == 0)
 			return false;
+		// Beetle's shield absorbs the whole hit (GOG-84).
+		if (this.shield > 0) {
+			this.shield--;
+			refreshColor();
+			return false;
+		}
 		this.health = Math.max(0, this.health - damage);
-		if (this.health == 1)
-			setColor(Color.WHITE);
+		refreshColor();
 		return this.health == 0;
 	}
 
@@ -168,7 +281,41 @@ public class EnemyShip extends Entity {
 			case EnemyShipC2:
 				this.spriteType = SpriteType.EnemyShipC1;
 				break;
+			case Overseer1:
+				this.spriteType = SpriteType.Overseer2;
+				break;
+			case Overseer2:
+				this.spriteType = SpriteType.Overseer1;
+				break;
+			case HunterJet1:
+				this.spriteType = SpriteType.HunterJet2;
+				break;
+			case HunterJet2:
+				this.spriteType = SpriteType.HunterJet1;
+				break;
+			case WardenBot1:
+				this.spriteType = SpriteType.WardenBot2;
+				break;
+			case WardenBot2:
+				this.spriteType = SpriteType.WardenBot1;
+				break;
+			case Crawler1:
+				this.spriteType = SpriteType.Crawler2;
+				break;
+			case Crawler2:
+				this.spriteType = SpriteType.Crawler1;
+				break;
+			case SentryDrone1:
+				this.spriteType = SpriteType.SentryDrone2;
+				break;
+			case SentryDrone2:
+				this.spriteType = SpriteType.SentryDrone1;
+				break;
 			default:
+				// Story types swap between their own two frames.
+				if (this.type.hasOwnSprites() && !this.isDestroyed)
+					this.spriteType = this.spriteType == this.type.getFrameA()
+							? this.type.getFrameB() : this.type.getFrameA();
 				break;
 			}
 		}

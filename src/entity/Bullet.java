@@ -23,6 +23,8 @@ public class Bullet extends Entity {
 	private int speed;
 	/** Horizontal speed of the bullet, positive is right. Usually zero. */
 	private int speedX;
+	/** True for a Polar freeze bullet (GoG, GOG-84). */
+	private boolean freezing;
 
 	/**
 	 * Constructor, establishes the bullet's properties.
@@ -105,6 +107,26 @@ public class Bullet extends Entity {
 	 */
 	public final void setSpeedX(final int speedX) {
 		this.speedX = speedX;
+	}
+
+	/**
+	 * Marks the bullet as a Polar freeze bullet, or back to a normal one
+	 * (GoG, GOG-84). A freeze bullet is drawn in light blue (#4AB9E8).
+	 *
+	 * @param freezing
+	 *            True for a freeze bullet.
+	 */
+	public final void setFreezing(final boolean freezing) {
+		this.freezing = freezing;
+		setColor(freezing ? EnemyType.FREEZE_BULLET_COLOR : Color.WHITE);
+	}
+
+	/**
+	 * @return True if hitting the player freezes the ship instead of
+	 *         taking a life.
+	 */
+	public final boolean isFreezing() {
+		return this.freezing;
 	}
 
 	/**

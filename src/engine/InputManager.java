@@ -91,6 +91,18 @@ public final class InputManager implements KeyListener, MouseMotionListener, Mou
 	 * @param key
 	 *            Key typed.
 	 */
+	/**
+	 * Forgets every held key and mouse button. Used when this manager stops
+	 * receiving events (a Swing panel takes over the window, or the window
+	 * loses focus), because the matching releases would never arrive and the
+	 * keys would stay "held" forever.
+	 */
+	public void releaseAll() {
+		java.util.Arrays.fill(keys, false);
+		isClick = false;
+		this.leftMousePressed = false;
+	}
+
 	@Override
 	public void keyTyped(final KeyEvent key) {
 
