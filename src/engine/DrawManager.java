@@ -2420,6 +2420,24 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws a picture scaled to a box, keeping hard pixel edges
+	 * (shard icons, GOG-51).
+	 *
+	 * @param image     Picture to draw; nothing is drawn if null.
+	 * @param positionX Horizontal position of the left edge.
+	 * @param positionY Vertical position of the top edge.
+	 * @param width     Width on screen.
+	 * @param height    Height on screen.
+	 */
+	public void drawImage(final BufferedImage image, final int positionX,
+						  final int positionY, final int width, final int height) {
+		if (image == null)
+			return;
+		backBufferGraphics.drawImage(image, positionX, positionY, width,
+				height, null);
+	}
+
+	/**
 	 * Measures text in the regular font, for centring and right-aligning.
 	 *
 	 * @param string Text to measure.
