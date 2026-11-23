@@ -2,23 +2,26 @@
 
 ## Branches
 - `main` — protected. No direct push. Changes arrive only through PRs.
-- `<team>/<feature>` — one branch per feature. Lowercase, hyphens. Delete after merge.
-  - `hello-world/settings-screen`, `gog/coin-drop`
+- `gog-<number>-<short-feature>` — one branch per feature, made from the latest `main`. Lowercase, hyphens only. Delete after merge.
+  - `gog-12-mode-select-menu`, `gog-30-enemy-variants`
+  - `<number>` is the Jira ticket number, so the branch shows up on the ticket.
 
 ## Commits
 - Format: `<type>: <subject>` — see `.gitmessage.txt`. Enable it: `git config commit.template .gitmessage.txt`
 - Types: `feat` `fix` `refactor` `docs` `test` `ci` `chore` `style`
 - Subject ≤ 50 chars, imperative ("add", not "added"), English.
+- Optional footer: `Refs GOG-<number>` (links the commit to the Jira ticket).
 - Small commits. If you need "and" in the subject, split it.
+- Example: `feat: add mode select menu`
 
 ## Pull requests
 - One feature per PR. Target ~400 changed lines or less.
-- Fill the template. Screenshots for anything visible.
-- Base branch: **your team fork `main`** for daily work. Upstream only when a requirement is complete and after the leaders' channel has been told.
-- Rebase/merge latest `main` before requesting review. PRs with conflicts are not reviewed.
+- Base branch: `main` of our repo.
+- Title: `<type>: <subject> (GOG-<number>)`, e.g. `feat: add mode select menu (GOG-12)`. Type first, lowercase. The key goes at the end in brackets, not as a scope. The title becomes the squash commit on `main`.
+- Description: fill the template. Put the ticket key and the reason under "Why". Screenshots for anything visible.
+- Merge latest `main` into your branch before requesting review. PRs with conflicts are not reviewed.
 - Request **1–2 reviewers**, not everyone.
 - Merge method: **Squash and merge**. Delete the branch.
-- **Upstream PRs:** title `type(requirement): subject` (e.g. `feat(main-menu): ...`) so the shared PR list shows which team it is. If it depends on another team's PR, put `Depends on: #N` on the first line of the body.
 
 ## Reviews
 Tag every comment with a priority so the author knows what is required:
