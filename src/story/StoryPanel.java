@@ -16,13 +16,18 @@ import java.util.Map;
 /**
  * Story Mode cutscene player.
  *
- * - Background images for Panels 1-5
+ * - Background images for Panels 1-33
  * - Backgrounds fill the scene rectangle without stretching
  * - Center-crops images to remove black gaps
  * - Pixel-art nearest-neighbor rendering
  * - Emotion-based character portraits
  * - Typing sound
  * - SKIP button and ESC shortcut
+ *
+ * Panel 32 special behavior:
+ * - Dialogue lines 1-2: panel32.png
+ * - Dialogue lines 3-7: panel32.5.png
+ * - Afterwards: panel33.png
  */
 public class StoryPanel extends JPanel {
 
@@ -96,6 +101,10 @@ public class StoryPanel extends JPanel {
     private final Timer animationTimer;
 
     private int panelNumber;
+
+    // Tracks the current dialogue line inside each panel.
+    private int dialogueLine;
+
     private DialogueManager dialogueManager;
 
     private int visibleCharacters;
@@ -341,6 +350,9 @@ public class StoryPanel extends JPanel {
 
         panelNumber = number;
 
+        // Every new panel starts with dialogue line 1.
+        dialogueLine = 1;
+
         dialogueManager =
                 new DialogueManager(dialogues);
 
@@ -356,8 +368,9 @@ public class StoryPanel extends JPanel {
 
     private BufferedImage loadSceneImage(int number) {
 
-        // Only panels 1-5 currently have backgrounds.
-        if (number < 1 || number > 5) {
+        // Load background images for panels 1-33.
+        // Missing images fall back to a black background.
+        if (number < 1 || number > 33) {
             return null;
         }
 
@@ -411,6 +424,56 @@ public class StoryPanel extends JPanel {
         sceneCache.put(number, image);
 
         return image;
+    }
+
+    // =========================================
+    // PANEL 32.5 BACKGROUND TRANSITION
+    // =========================================
+
+    private void loadPanel32GoodbyeBackground() {
+
+        String path =
+                PANEL_FOLDER + "panel32.5.png";
+
+        try {
+
+            File file = new File(path);
+
+            if (file.isFile()) {
+
+                BufferedImage image = ImageIO.read(file);
+
+                if (image != null) {
+
+                    currentSceneImage = image;
+
+                    System.out.println(
+                            "[STORY] Switched background: " + path
+                    );
+
+                } else {
+
+                    System.err.println(
+                            "[STORY] Unsupported background: " + path
+                    );
+                }
+
+            } else {
+
+                System.err.println(
+                        "[STORY] Missing background: " + path
+                );
+            }
+
+        } catch (IOException e) {
+
+            System.err.println(
+                    "[STORY] Failed to load: "
+                            + path
+                            + " - "
+                            + e.getMessage()
+            );
+        }
     }
 
     // =========================================
@@ -508,7 +571,35 @@ public class StoryPanel extends JPanel {
         // Move to next dialogue.
         dialogueManager.advanceDialogue();
 
+        // Track current dialogue line.
+        dialogueLine++;
+
         if (!dialogueManager.isFinished()) {
+
+            // =====================================
+            // SPECIAL PANEL 32 TRANSITION
+            // =====================================
+            //
+            // Dialogue 1:
+            // Another soldier quickly fired...
+            //
+            // Dialogue 2:
+            // But none of us cared about that anymore.
+            //
+            // Dialogue 3:
+            // We gathered around Blorp...
+            //
+            // After the second dialogue is finished,
+            // switch to panel32.5.png.
+            //
+            // The background remains panel32.5.png
+            // for dialogue lines 3-7.
+
+            if (panelNumber == 32 && dialogueLine == 3) {
+
+                loadPanel32GoodbyeBackground();
+            }
+
             startTyping();
             return;
         }
@@ -636,10 +727,7 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // We use center-cropping instead of stretching.
-        // The source area is chosen to match the
-        // aspect ratio of the scene rectangle.
-
+        // Center-crop the image without stretching it.
         int cropX = 0;
         int cropY = 0;
         int cropWidth = imageWidth;
@@ -654,7 +742,6 @@ public class StoryPanel extends JPanel {
         if (imageRatio > sceneRatio) {
 
             // Image is wider than the scene rectangle.
-            // Crop equal amounts from left and right.
             cropWidth = Math.max(
                     1,
                     (int) Math.round(
@@ -669,7 +756,6 @@ public class StoryPanel extends JPanel {
         } else if (imageRatio < sceneRatio) {
 
             // Image is taller than the scene rectangle.
-            // Crop equal amounts from top and bottom.
             cropHeight = Math.max(
                     1,
                     (int) Math.round(
@@ -682,7 +768,7 @@ public class StoryPanel extends JPanel {
             cropY = (imageHeight - cropHeight) / 2;
         }
 
-        // Destination: fills the ENTIRE scene rectangle.
+        // Destination: fills the entire scene rectangle.
         int destX1 = SCENE_X;
         int destY1 = SCENE_Y;
         int destX2 = SCENE_X + SCENE_WIDTH;
@@ -695,7 +781,6 @@ public class StoryPanel extends JPanel {
         int srcY2 = cropY + cropHeight;
 
         // Draw with nearest-neighbor interpolation.
-        // No black gaps and no deliberate stretching.
         g.drawImage(
                 currentSceneImage,
                 destX1,
@@ -1050,7 +1135,7 @@ public class StoryPanel extends JPanel {
                 StoryPanel panel =
                         new StoryPanel(
                                 1,
-                                5,
+                                33,
                                 window::dispose
                         );
 
