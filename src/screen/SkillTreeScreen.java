@@ -17,7 +17,8 @@ import skilltree.SkillTreePlaceholder;
  * Skill tree page of one ship (GOG-51), opened from Customize.
  * Three columns: Armor and Salvage (shared by every ship) and the ship's
  * own Specialty branch. The shard bar is on top and the selected node is
- * explained at the bottom. Q / E switch ship.
+ * explained at the bottom. Left / right arrows switch ship; W A S D move
+ * between nodes.
  *
  * Uses {@link SkillTreePlaceholder} until the real logic (GOG-88) exists:
  * unlocking only shows a message for now.
@@ -105,8 +106,7 @@ public class SkillTreeScreen extends Screen {
 		this.keys = new KeyPresses(this.inputManager, KeyEvent.VK_LEFT,
 				KeyEvent.VK_RIGHT, KeyEvent.VK_UP, KeyEvent.VK_DOWN,
 				KeyEvent.VK_A, KeyEvent.VK_D, KeyEvent.VK_W, KeyEvent.VK_S,
-				KeyEvent.VK_Q, KeyEvent.VK_E, KeyEvent.VK_SPACE,
-				KeyEvent.VK_ENTER, KeyEvent.VK_ESCAPE);
+				KeyEvent.VK_SPACE, KeyEvent.VK_ENTER, KeyEvent.VK_ESCAPE);
 	}
 
 	/**
@@ -140,21 +140,21 @@ public class SkillTreeScreen extends Screen {
 		} else if (this.keys.pressed(KeyEvent.VK_SPACE)
 				|| this.keys.pressed(KeyEvent.VK_ENTER)) {
 			tryUnlock();
-		} else if (this.keys.pressed(KeyEvent.VK_Q)) {
+				} else if (this.keys.pressed(KeyEvent.VK_LEFT)) {
+			// Arrows switch ship, like the Ship row in Customize.
 			changeShip(-1);
-		} else if (this.keys.pressed(KeyEvent.VK_E)) {
+		} else if (this.keys.pressed(KeyEvent.VK_RIGHT)) {
 			changeShip(1);
-		} else if (this.keys.pressed(KeyEvent.VK_UP)
-				|| this.keys.pressed(KeyEvent.VK_W)) {
+		} else if (this.keys.pressed(KeyEvent.VK_W)
+				|| this.keys.pressed(KeyEvent.VK_UP)) {
+			// W A S D move between nodes (up/down arrows work too).
 			selectNode(this.column, this.nodeIndex - 1);
-		} else if (this.keys.pressed(KeyEvent.VK_DOWN)
-				|| this.keys.pressed(KeyEvent.VK_S)) {
+		} else if (this.keys.pressed(KeyEvent.VK_S)
+				|| this.keys.pressed(KeyEvent.VK_DOWN)) {
 			selectNode(this.column, this.nodeIndex + 1);
-		} else if (this.keys.pressed(KeyEvent.VK_LEFT)
-				|| this.keys.pressed(KeyEvent.VK_A)) {
+		} else if (this.keys.pressed(KeyEvent.VK_A)) {
 			changeColumn(-1);
-		} else if (this.keys.pressed(KeyEvent.VK_RIGHT)
-				|| this.keys.pressed(KeyEvent.VK_D)) {
+		} else if (this.keys.pressed(KeyEvent.VK_D)) {
 			changeColumn(1);
 		}
 	}
@@ -317,7 +317,7 @@ public class SkillTreeScreen extends Screen {
 		drawColumns();
 		drawDetail();
 		drawManager.drawKeyHints(this,
-				"arrows move | space unlock | q/e ship | esc back");
+				"wasd move | left/right ship | space unlock | esc back");
 		drawManager.completeDrawing(this);
 	}
 
