@@ -2220,6 +2220,61 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws the end-of-Act-1 black hole (GoG, GOG-74): a black core with a
+	 * glowing rim and spinning spiral arms made of square pixels, so it
+	 * matches the sprites. Colours: earth-magma arms fading to earth-cloud
+	 * near the core.
+	 *
+	 * @param centerX
+	 *            Centre of the hole.
+	 * @param centerY
+	 *            Centre of the hole.
+	 * @param radius
+	 *            Radius of the black core; nothing is drawn at 0.
+	 * @param spin
+	 *            Swirl angle, in radians.
+	 */
+	public void drawBlackHole(final int centerX, final int centerY,
+			final int radius, final double spin) {
+		if (radius <= 0)
+			return;
+		final int arms = 4;
+		final int dotsPerArm = 14;
+		final int dot = 3;
+		for (int arm = 0; arm < arms; arm++) {
+			for (int i = 0; i < dotsPerArm; i++) {
+				double t = i / (double) (dotsPerArm - 1);
+				// Arms curl inwards: further out, further behind the spin.
+				double angle = spin + arm * 2 * Math.PI / arms - t * 2.4;
+				double distance = radius * (1.0 + 1.6 * t);
+				int x = (int) Math.round(centerX + Math.cos(angle) * distance);
+				int y = (int) Math.round(centerY + Math.sin(angle) * distance
+						* 0.8);
+				int alpha = (int) Math.round(255 * (1 - t * 0.85));
+				Color mix = blend(new Color(0xEEF3F7), new Color(0xFF6A3D), t);
+				backBufferGraphics.setColor(new Color(mix.getRed(),
+						mix.getGreen(), mix.getBlue(), alpha));
+				backBufferGraphics.fillRect(x - dot / 2, y - dot / 2, dot, dot);
+			}
+		}
+		// Glowing rim, then the black core over the inner ends of the arms.
+		backBufferGraphics.setColor(new Color(0xFF6A3D));
+		backBufferGraphics.fillOval(centerX - radius - 2, centerY - radius - 2,
+				radius * 2 + 4, radius * 2 + 4);
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillOval(centerX - radius, centerY - radius,
+				radius * 2, radius * 2);
+	}
+
+	/** @return Colour between a (t = 0) and b (t = 1). */
+	private static Color blend(final Color a, final Color b, final double t) {
+		return new Color(
+				(int) Math.round(a.getRed() + (b.getRed() - a.getRed()) * t),
+				(int) Math.round(a.getGreen() + (b.getGreen() - a.getGreen()) * t),
+				(int) Math.round(a.getBlue() + (b.getBlue() - a.getBlue()) * t));
+	}
+
+	/**
 	 * Countdown to game start.
 	 *
 	 * @param screen

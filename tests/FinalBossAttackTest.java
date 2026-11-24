@@ -215,7 +215,8 @@ public final class FinalBossAttackTest {
     }
 
     private static void pausePreservesBossWarningsAndGracePeriod() throws Exception {
-        GameScreen screen = new GameScreen(new GameState(10, 0, 3, 0, 0, 0),
+        // Level 30: level 10 is now the AI Warship (GOG-74).
+        GameScreen screen = new GameScreen(new GameState(30, 0, 3, 0, 0, 0),
                 SETTINGS, false, WIDTH, HEIGHT, 60);
         screen.initialize();
         FinalBoss boss = (FinalBoss) get(screen, "midBoss");

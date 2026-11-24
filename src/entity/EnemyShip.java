@@ -184,7 +184,7 @@ public class EnemyShip extends Entity {
 	private void refreshColor() {
 		if (this.shield > 0)
 			setColor(EnemyType.SHIELD_COLOR);
-		else if (this.health > 1)
+		else if (this.health > 1 && this.type.showsExtraHealth())
 			setColor(Color.YELLOW);
 		else
 			setColor(this.baseColor);
