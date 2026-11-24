@@ -1044,8 +1044,8 @@ public class StoryPanel extends JPanel {
 
                 StoryPanel panel =
                         new StoryPanel(
-                                6,
-                                8,
+                                18,
+                                18,
                                 window::dispose
                         );
 
