@@ -512,29 +512,44 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-			int centerX = shooter.getPositionX() + shooter.width / 2;
-			int y = shooter.getPositionY();
-			switch (shooter.getType()) {
-			case JELLY:
-				// Double shot: two bullets spreading in a cone (GOG-84).
-				Bullet left = BulletPool.getBullet(centerX, y, BULLET_SPEED);
-				left.setSpeedX(-EnemyType.DOUBLE_SHOT_SPREAD);
-				bullets.add(left);
-				Bullet right = BulletPool.getBullet(centerX, y, BULLET_SPEED);
-				right.setSpeedX(EnemyType.DOUBLE_SHOT_SPREAD);
-				bullets.add(right);
-				break;
-			case POLAR:
-				// Freeze bullet: locks the ship instead of taking a life.
-				Bullet freezeBullet = BulletPool.getBullet(centerX, y,
-						BULLET_SPEED);
-				freezeBullet.setFreezing(true);
-				bullets.add(freezeBullet);
-				break;
-			default:
-				bullets.add(BulletPool.getBullet(centerX, y, BULLET_SPEED));
-				break;
-			}
+			fireShot(shooter, bullets);
+		}
+	}
+
+	/**
+	 * Fires one shot from an enemy, using its type's ability (GOG-84): Jelly
+	 * fires two bullets in a cone, Polar a freeze bullet, everyone else one
+	 * straight bullet. Also used by the Tempest Queen's mobs (GOG-75).
+	 *
+	 * @param shooter
+	 *            Enemy that shoots.
+	 * @param bullets
+	 *            Bullets in play, the new ones are added here.
+	 */
+	public static void fireShot(final EnemyShip shooter,
+			final Set<Bullet> bullets) {
+		int centerX = shooter.getPositionX() + shooter.width / 2;
+		int y = shooter.getPositionY();
+		switch (shooter.getType()) {
+		case JELLY:
+			// Double shot: two bullets spreading in a cone (GOG-84).
+			Bullet left = BulletPool.getBullet(centerX, y, BULLET_SPEED);
+			left.setSpeedX(-EnemyType.DOUBLE_SHOT_SPREAD);
+			bullets.add(left);
+			Bullet right = BulletPool.getBullet(centerX, y, BULLET_SPEED);
+			right.setSpeedX(EnemyType.DOUBLE_SHOT_SPREAD);
+			bullets.add(right);
+			break;
+		case POLAR:
+			// Freeze bullet: locks the ship instead of taking a life.
+			Bullet freezeBullet = BulletPool.getBullet(centerX, y,
+					BULLET_SPEED);
+			freezeBullet.setFreezing(true);
+			bullets.add(freezeBullet);
+			break;
+		default:
+			bullets.add(BulletPool.getBullet(centerX, y, BULLET_SPEED));
+			break;
 		}
 	}
 

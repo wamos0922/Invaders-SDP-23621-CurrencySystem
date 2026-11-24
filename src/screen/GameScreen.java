@@ -41,6 +41,7 @@ import entity.CoinPool;
 import entity.EnemyShip;
 import entity.Boss;
 import entity.FinalBoss;
+import entity.TempestQueen;
 import entity.EnemyShipFormation;
 import entity.Entity;
 import entity.Particle;
@@ -236,6 +237,8 @@ public class GameScreen extends Screen {
 	private long gameStartTime;
 	/** Checks if the level is finished. */
 	private boolean levelFinished;
+	/** True once the boss's clock was started at the end of the countdown (GOG-75). */
+	private boolean bossFightStarted;
 	/** Sparkles from destroyed ships. AUTHORED BY: VFX TEAM (Effection) */
 	private List<Particle> particles = new ArrayList<Particle>();
 	/** Colors the sparkles can have. AUTHORED BY: VFX TEAM (Effection) */
@@ -378,8 +381,14 @@ public class GameScreen extends Screen {
 				&& this.level >= 1
 				&& this.level <= 40
 				&& this.level % 10 == 0) {
-			this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
-					DrawManager.SpriteType.FinalBoss1);
+			// GOG-75: level 20 is the Tempest Queen; the other boss levels
+			// keep the placeholder until their bosses are built.
+			if (this.level == 20)
+				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
+			else
+				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
+						DrawManager.SpriteType.FinalBoss1);
+			this.bossFightStarted = false;
 		} else {
 			// Act 1 (story levels 1-10) uses the Earth Escape enemies.
 			boolean earthAct = !EndlessMode.isEnabled()
@@ -522,6 +531,13 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
+
+			// The boss's clock starts when the countdown ends, so its
+			// warning and timers don't run out during it (GOG-75).
+			if (this.midBoss != null && !this.bossFightStarted) {
+				this.midBoss.startFight();
+				this.bossFightStarted = true;
+			}
 
 			// A Polar freeze bullet locks moving and shooting (GOG-84);
 			// items can still be used.
@@ -863,8 +879,8 @@ public class GameScreen extends Screen {
 
 	/** Resumes the level without consuming the boss's warning time. */
 	private void resumeGameplay() {
-		if (this.paused && this.midBoss instanceof FinalBoss) {
-			((FinalBoss) this.midBoss).resumeAfterPause(
+		if (this.paused && this.midBoss != null) {
+			this.midBoss.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
 		// Pausing doesn't use up a freeze (GOG-84).
@@ -991,6 +1007,11 @@ public class GameScreen extends Screen {
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.
 		drawManager.drawBossHealthBar(this, this.midBoss, 64);
+		// Blinking boss warning before the boss appears (GOG-75).
+		if (this.midBoss != null && this.midBoss.getWarningText() != null
+				&& (System.currentTimeMillis() / 250) % 2 == 0)
+			drawManager.drawCenteredRegularString(this,
+					this.midBoss.getWarningText(), this.height / 2, Color.RED);
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
 		drawManager.drawGlitch(this, this.glitch);
@@ -1177,7 +1198,10 @@ public class GameScreen extends Screen {
 				// Boss stages are the ones that actually spawned a boss, so
 				// endless waves 5 and 10 hit their formation (GOG-7).
 				if (this.midBoss != null) {
-					if (!this.midBoss.isDestroyed()
+					// Boss minions (GOG-75 Tempest Queen mobs) are hit first.
+					if (hitBossMinion(bullet)) {
+						recyclable.add(bullet);
+					} else if (!this.midBoss.isDestroyed()
 							&& checkCollision(bullet, (Entity) this.midBoss)) {
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
 						if (this.midBoss.isDestroyed()) {
@@ -1257,6 +1281,42 @@ public class GameScreen extends Screen {
 	 * @return Centers of all enemies that are still alive.
 	 *         AUTHORED BY: VFX TEAM (Effection)
 	 */
+	/**
+	 * Checks a player bullet against the boss's minions (GOG-75). A kill
+	 * gives the same rewards as a normal enemy; a hit that a shield absorbs
+	 * only plays the hit sound.
+	 *
+	 * @param bullet
+	 *            Player bullet.
+	 * @return True if the bullet hit a minion (and should be removed).
+	 */
+	private boolean hitBossMinion(final Bullet bullet) {
+		for (EnemyShip minion : this.midBoss.getMinions()) {
+			if (minion.isDestroyed() || !checkCollision(bullet, minion))
+				continue;
+			if (!minion.takeDamage(1)) {
+				SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
+				return true;
+			}
+			this.score += this.items.scoreFor(minion.getPointValue());
+			this.shipsDestroyed++;
+			spawnSparkles(minion);
+			minion.destroy();
+			this.screenShake.trigger();
+			this.pointsEffect.spawn(
+					minion.getPositionX() + minion.getWidth() / 2,
+					minion.getPositionY() + minion.getHeight() / 2,
+					minion.getPointValue());
+			queueScoreBoostPopup(minion, false); // Item System (Team CS)
+			maybeDropCoin(minion);
+			this.items.onEnemyDefeated(minion, false);
+			showUnlockedAchievement(Core.getAchievementManager()
+					.recordEnemyDefeated());
+			return true;
+		}
+		return false;
+	}
+
 	private java.util.List<java.awt.Point> aliveEnemyCenters() {
 		java.util.List<java.awt.Point> centers = new java.util.ArrayList<java.awt.Point>();
 		for (EnemyShip e : this.enemyShipFormation)

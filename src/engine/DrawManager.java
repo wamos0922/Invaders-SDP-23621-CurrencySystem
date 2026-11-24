@@ -203,7 +203,12 @@ public final class DrawManager {
 		StormKing2,
 		/** Act 2 (Jupiter) Cloud Ray, no ability, two frames (GoG, GOG-84). */
 		CloudRay1,
-		CloudRay2
+		CloudRay2,
+		/** Level 20 boss Tempest Queen, two frames, 24 x 16 (GoG, GOG-75). */
+		TempestQueen1,
+		TempestQueen2,
+		/** Tempest Queen's Gas Shield outline, 28 x 20 (GoG, GOG-75). */
+		GasShield
 	};
 
 	/**
@@ -297,6 +302,11 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.StormKing2, new boolean[12][8]);
 			spriteMap.put(SpriteType.CloudRay1, new boolean[12][8]);
 			spriteMap.put(SpriteType.CloudRay2, new boolean[12][8]);
+
+			// Level 20 boss Tempest Queen (GoG, GOG-75)
+			spriteMap.put(SpriteType.TempestQueen1, new boolean[24][16]);
+			spriteMap.put(SpriteType.TempestQueen2, new boolean[24][16]);
+			spriteMap.put(SpriteType.GasShield, new boolean[28][20]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
