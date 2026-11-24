@@ -15,7 +15,7 @@
 - Example: `feat: add mode select menu`
 
 ## Pull requests
-- One feature per PR. Target ~400 changed lines or less.
+- One feature per PR. Target ~500 changed lines or less.
 - Base branch: `main` of our repo.
 - Title: `<type>: <subject> (GOG-<number>)`, e.g. `feat: add mode select menu (GOG-12)`. Type first, lowercase. The key goes at the end in brackets, not as a scope. The title becomes the squash commit on `main`.
 - Description: fill the template. Put the ticket key and the reason under "Why". Screenshots for anything visible.
