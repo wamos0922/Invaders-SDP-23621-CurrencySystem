@@ -18,7 +18,7 @@ import skilltree.SkillTreePlaceholder;
  * Three columns: Armor and Salvage (shared by every ship) and the ship's
  * own Specialty branch. The shard bar is on top and the selected node is
  * explained at the bottom. Left / right arrows switch ship; W A S D move
- * between nodes.
+ * between nodes. C (or the CONVERT button) opens the shard converter.
  *
  * Uses {@link SkillTreePlaceholder} until the real logic (GOG-88) exists:
  * unlocking only shows a message for now.
@@ -41,7 +41,10 @@ public class SkillTreeScreen extends Screen {
 	/** Height of one node box. */
 	private static final int NODE_HEIGHT = 26;
 	/** Distance between two Specialty nodes. */
+	/** Distance between two Specialty nodes. */
 	private static final int NODE_STEP = 30;
+	/** Width of the CONVERT button next to the shard bar. */
+	private static final int CONVERT_WIDTH = 76;
 	/** Top of the ship row. */
 	private static final int SHIP_TOP = 116;
 	/** Top of the node columns. */
@@ -106,7 +109,8 @@ public class SkillTreeScreen extends Screen {
 		this.keys = new KeyPresses(this.inputManager, KeyEvent.VK_LEFT,
 				KeyEvent.VK_RIGHT, KeyEvent.VK_UP, KeyEvent.VK_DOWN,
 				KeyEvent.VK_A, KeyEvent.VK_D, KeyEvent.VK_W, KeyEvent.VK_S,
-				KeyEvent.VK_SPACE, KeyEvent.VK_ENTER, KeyEvent.VK_ESCAPE);
+				KeyEvent.VK_C, KeyEvent.VK_SPACE, KeyEvent.VK_ENTER,
+				KeyEvent.VK_ESCAPE);
 	}
 
 	/**
@@ -138,9 +142,11 @@ public class SkillTreeScreen extends Screen {
 			this.returnCode = CUSTOMIZE_CODE;
 			this.isRunning = false;
 		} else if (this.keys.pressed(KeyEvent.VK_SPACE)
-				|| this.keys.pressed(KeyEvent.VK_ENTER)) {
+								|| this.keys.pressed(KeyEvent.VK_ENTER)) {
 			tryUnlock();
-				} else if (this.keys.pressed(KeyEvent.VK_LEFT)) {
+		} else if (this.keys.pressed(KeyEvent.VK_C)) {
+			openConverter();
+		} else if (this.keys.pressed(KeyEvent.VK_LEFT)) {
 			// Arrows switch ship, like the Ship row in Customize.
 			changeShip(-1);
 		} else if (this.keys.pressed(KeyEvent.VK_RIGHT)) {
@@ -162,8 +168,12 @@ public class SkillTreeScreen extends Screen {
 	private void handleMouse() {
 		if (!this.keys.clicked())
 			return;
-		int x = this.keys.mouseX();
+				int x = this.keys.mouseX();
 		int y = this.keys.mouseY();
+		if (convertArea().contains(x, y)) {
+			openConverter();
+			return;
+		}
 		if (prevShipArea().contains(x, y)) {
 			changeShip(-1);
 			return;
@@ -181,6 +191,12 @@ public class SkillTreeScreen extends Screen {
 						selectNode(branch, i);
 					return;
 				}
+	}
+
+	/** Opens the shard converter (GOG-52); Esc there comes back here. */
+	private void openConverter() {
+		this.returnCode = ConverterScreen.CODE;
+		this.isRunning = false;
 	}
 
 	private void changeShip(final int step) {
@@ -299,6 +315,11 @@ public class SkillTreeScreen extends Screen {
 				columnWidth(branch), NODE_HEIGHT);
 	}
 
+	private Rectangle convertArea() {
+		return new Rectangle(this.width - MARGIN - CONVERT_WIDTH,
+				ShardBar.TOP, CONVERT_WIDTH, ShardBar.HEIGHT);
+	}
+
 	private Rectangle prevShipArea() {
 		return new Rectangle(MARGIN, SHIP_TOP, 30, 30);
 	}
@@ -315,15 +336,21 @@ public class SkillTreeScreen extends Screen {
 		drawShardBar();
 		drawShipRow();
 		drawColumns();
-		drawDetail();
+				drawDetail();
 		drawManager.drawKeyHints(this,
-				"wasd move | left/right ship | space unlock | esc back");
+				"wasd move | left/right ship | c convert | esc back");
 		drawManager.completeDrawing(this);
 	}
 
-	/** Shard bar across the top. */
+	/** Shard bar across the top, with the CONVERT button on its right. */
 	private void drawShardBar() {
-		ShardBar.draw(drawManager, MARGIN, this.width - MARGIN);
+		Rectangle button = convertArea();
+		ShardBar.draw(drawManager, MARGIN, button.x - GAP);
+		drawManager.drawBox(button.x, button.y, button.width, button.height,
+				Color.GREEN);
+		drawManager.drawSmallString("CONVERT", button.x + button.width / 2
+				- drawManager.getSmallStringWidth("CONVERT") / 2,
+				button.y + 19, Color.GREEN);
 	}
 
 	/** Arrows, ship picture, name, role and progress. */
