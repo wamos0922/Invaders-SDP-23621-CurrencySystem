@@ -34,6 +34,7 @@ import engine.ScreenShake;
 import engine.PointsEffect;
 import engine.PlayerSounds;
 import engine.soundEngine.ItemSounds;
+import entity.AIWarship;
 import entity.Bullet;
 import entity.BulletPool;
 import entity.Coin;
@@ -239,6 +240,11 @@ public class GameScreen extends Screen {
 	private boolean levelFinished;
 	/** True once the boss's clock was started at the end of the countdown (GOG-75). */
 	private boolean bossFightStarted;
+	/**
+	 * End of Act 1 (GOG-74): the black hole that swallows the player after
+	 * the AI Warship is destroyed; null on every other level.
+	 */
+	private BlackHoleScene blackHole;
 	/** Sparkles from destroyed ships. AUTHORED BY: VFX TEAM (Effection) */
 	private List<Particle> particles = new ArrayList<Particle>();
 	/** Colors the sparkles can have. AUTHORED BY: VFX TEAM (Effection) */
@@ -381,9 +387,12 @@ public class GameScreen extends Screen {
 				&& this.level >= 1
 				&& this.level <= 40
 				&& this.level % 10 == 0) {
-			// GOG-75: level 20 is the Tempest Queen; the other boss levels
-			// keep the placeholder until their bosses are built.
-			if (this.level == 20)
+			// GOG-74: level 10 is the AI Warship; GOG-75: level 20 is the
+			// Tempest Queen; the other boss levels keep the placeholder
+			// until their bosses are built.
+			if (this.level == 10)
+				this.midBoss = new AIWarship(this.width / 2 - 24, 100);
+			else if (this.level == 20)
 				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
 			else
 				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
@@ -626,6 +635,9 @@ public class GameScreen extends Screen {
 		this.pendingDiamonds += this.meteors.update(this.ship, this.lives > 0); // VFX TEAM (Effection): updates the meteor and its diamonds, returns the diamonds to be added to pending
 		handleItemEvents();
 		updateAchievementPopup();
+		// End of Act 1: the black hole pulls the ship in (GOG-74).
+		if (this.blackHole != null)
+			this.blackHole.pull(this.ship, System.currentTimeMillis());
 		draw();
 
 		// Game over sequence, only when the player runs out of lives. AUTHORED BY: VFX TEAM (Effection)
@@ -653,6 +665,17 @@ public class GameScreen extends Screen {
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
+				// Act 1 ends: the AI Warship's wreck opens a black hole
+				// that swallows the player (GOG-74).
+				if (this.midBoss instanceof AIWarship) {
+					AIWarship warship = (AIWarship) this.midBoss;
+					this.blackHole = new BlackHoleScene(warship.getCenterX(),
+							warship.getCenterY(), System.currentTimeMillis());
+					// Bullets stop moving once the level is over; clear
+					// them so none hang in the air during the scene.
+					BulletPool.recycle(this.bullets);
+					this.bullets.clear();
+				}
 				showUnlockedAchievements(Core.getAchievementManager()
 						.recordFlawlessLevelCompleted(this.tookDamage));
 				showUnlockedAchievement(Core.getAchievementManager()
@@ -676,6 +699,8 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.levelFinished && this.screenFinishedCooldown.checkFinished()
+				&& (this.blackHole == null
+						|| this.blackHole.isFinished(System.currentTimeMillis()))
 				&& this.unlockedAchievement == null
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
@@ -887,6 +912,10 @@ public class GameScreen extends Screen {
 		if (this.paused)
 			this.ship.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor the black hole scene (GOG-74).
+		if (this.paused && this.blackHole != null)
+			this.blackHole.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
 	}
@@ -905,6 +934,7 @@ public class GameScreen extends Screen {
 		refundCoinsCollectedThisLevel();
 		this.tookDamage = false; // a restarted level can still be flawless
 		this.levelFinished = false;
+		this.blackHole = null;
 		initialize();
 		this.paused = false;
 	}
@@ -935,7 +965,18 @@ public class GameScreen extends Screen {
 				this.ghostTrail.draw(drawManager, this.ship,
 						this.skin.colorAt(System.currentTimeMillis()),
 						engine.GhostTrail.isBoosting(this.items));
-			if (!warping)
+			// End of Act 1 (GOG-74): the black hole sits behind the ship,
+			// which shrinks away while it is pulled in.
+			long sceneNow = System.currentTimeMillis();
+			if (this.blackHole != null)
+				drawManager.drawBlackHole(this.blackHole.getCenterX(),
+						this.blackHole.getCenterY(),
+						this.blackHole.getRadius(sceneNow),
+						this.blackHole.getSpin(sceneNow));
+			if (this.blackHole != null && this.blackHole.isPulling(sceneNow))
+				drawManager.drawEntityShrunk(this.ship,
+						this.blackHole.getShipScale(sceneNow));
+			else if (!warping)
 				drawManager.drawEntity(this.ship, this.ship.getPositionX(),
 						this.ship.getPositionY());
 			drawManager.drawWarpIn(this.warpIn, this.ship,
@@ -985,6 +1026,10 @@ public class GameScreen extends Screen {
 			drawManager.drawItemDrops(this.items); // Item System (Team CS)
 			// HUD must stay still: remove shake offset.
 			drawManager.setWorldOffset(0, 0);
+			// Black hole scene ends by fading to black (GOG-74).
+			if (this.blackHole != null)
+				drawManager.drawFadeOverlay(this,
+						this.blackHole.getFadeAlpha(sceneNow));
 		}
 
 		// Points popups (above the dim, under the HUD). AUTHORED BY: VFX TEAM (Effection)
