@@ -71,19 +71,25 @@ public final class ItemSystem {
     private ItemSystem(Random random) {
         balance = ItemBalance.load();
         catalog = new ItemDefinitions(balance); // pick up balance changes for the equipment calls too
-        ItemInfo equipped = equippedItem();
+        // GOG-50: a run can have several equipped items (3 in Endless, 1 in Story).
+        List<ItemInfo> equipped = runEquipmentItems();
         int capacity = balance.inventoryCapacity;
-        if (equipped != null && equipped.effectKind == EffectKind.EXTRA_SLOTS)
-            capacity += equipped.magnitude.intValue();
-        maxLives = balance.maxLives + (equipped != null && equipped.effectKind == EffectKind.MAX_LIFE
-            ? equipped.magnitude.intValue() : 0);
+        int extraLives = 0;
+        StringBuilder names = new StringBuilder();
+        for (ItemInfo item : equipped) {
+            if (item.effectKind == EffectKind.EXTRA_SLOTS) capacity += item.magnitude.intValue();
+            if (item.effectKind == EffectKind.MAX_LIFE) extraLives += item.magnitude.intValue();
+            names.append(names.length() == 0 ? "" : ", ").append(item.displayName);
+        }
+        maxLives = balance.maxLives + extraLives;
         manager = new ItemManager(capacity, balance, random);
         api = new ItemAPI(manager);
         manager.setEventListener(this::onEvent);
-        if (equipped != null) manager.equip(equipped);
+        for (ItemInfo item : equipped) manager.equip(item);
         logger.info("Item system started a new run (" + capacity + " item slots, max lives " + maxLives + ", equipped: "
-            + (equipped == null ? "none" : equipped.displayName) + ").");
+            + (names.length() == 0 ? "none" : names) + ").");
     }
+
 
     /** Run instance for the level number. Starts a new run at level 1 or when there is no run. */
     public static ItemSystem forLevel(int level) {
@@ -98,7 +104,34 @@ public final class ItemSystem {
     // Ownership is saved next to the game, like the coin balance. How an item becomes owned
     // (e.g. a shop purchase) belongs to the caller, which then calls grantEquipment.
 
+
     private static final String EQUIPMENT_FILE = "equipment";
+    /** Item ids equipped for the next run (GOG-50 loadout). Null = use the single equipped item. */
+    private static List<String> runEquipment;
+
+    /**
+     * Sets the items equipped for the next run, e.g. the Endless or Story loadout (GOG-50).
+     * Items that are unknown or not owned are skipped. Null goes back to the single equipped item.
+     */
+    public static void setRunEquipment(List<String> itemIds) {
+        runEquipment = itemIds == null ? null : new ArrayList<String>(itemIds);
+    }
+
+    /** The owned equipped items for a new run, without repeats. */
+    private static List<ItemInfo> runEquipmentItems() {
+        List<ItemInfo> items = new ArrayList<ItemInfo>();
+        if (runEquipment == null) {
+            ItemInfo single = equippedItem();
+            if (single != null) items.add(single);
+            return items;
+        }
+        Set<String> seen = new LinkedHashSet<String>();
+        for (String itemId : runEquipment) {
+            ItemInfo item = equipment(itemId);
+            if (item != null && isOwned(itemId) && seen.add(itemId)) items.add(item);
+        }
+        return items;
+    }
     private static Set<String> ownedEquipment;
     private static String equippedId;
     /** Item catalog for the equipment calls outside a run. Loaded on first use, refreshed when a run starts. */

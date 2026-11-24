@@ -96,7 +96,9 @@ Key facts at the time:
 - **Weekly review and retro:** at the end of each week we note what finished, what slipped and what to change.
 - **Every ticket** has one owner, a due date, and a parent epic or feature.
 - **Priority labels:** Must, Should or Stretch. Challenge modes, shard space and the skill tree are Stretch. The core game ships first.
-- **Definition of Done:** PR merged, reviewed by someone other than the author, tests passing, and the ticket key (for example `GOG-12`) in the branch or PR name.
+- **Definition of Done:** PR merged, reviewed by one of the three reviewers (never the author), tests passing, and the ticket key (for example `GOG-12`) in the branch and PR title.
+- **Git conventions** (details in `CONTRIBUTING.md`): branch `GOG-<number>-<short-feature>` (key in uppercase so Jira links it); commit `<type>: <subject>` with optional `Refs GOG-<n>` footer; PR title `<type>: <subject> (GOG-<n>)`, checked by the `pr-title` workflow; squash and merge.
+- **Reviewers (agreed by the team, 23 Nov 2026):** three people review PRs, in this order of priority: Akif (main reviewer and tester), Ikhwan (2nd), Haikal (3rd). The author requests Akif first; if Akif is unavailable or is the author, Ikhwan; then Haikal.
 - **Quality:** feature owners write unit tests; static analysis is run before the final week.
 
 ## 8. Changes and status
@@ -172,14 +174,14 @@ To be confirmed by each member. Each person adds their own line to the README to
 | Wafi | Story content (planet content, tutorial, visuals and audio), shard designs |
 | Asyrafuddin | Enemy variants |
 | Nikmar | Boss design and implementation |
-| Akif | Tester |
+| Akif | Tester and main PR reviewer |
 
 ## 11. Testing and quality plan
 
 - **Unit tests:** each feature owner tests their own logic (AAA pattern, JUnit). Amani's stamina tickets (GOG-59, GOG-62) are the first example.
 - **Test plan and checklist:** by the tester, covering every feature (*on hold*).
 - **Weekly playtest:** one per week, under GOG-20, with bugs logged as tickets.
-- **Code review:** every PR reviewed by someone else; reviews stay on GitHub.
+- **Code review:** every PR is reviewed by Akif, Ikhwan or Haikal (in that priority), never the author; reviews stay on GitHub, with P1-P5 priority tags (see `CONTRIBUTING.md`).
 - **Static analysis:** a tool such as SpotBugs, Checkstyle or SonarLint is run on the repo (GOG-68). We keep the before and after results and note the tool and version.
 - **Test report:** written near the end by the tester.
 

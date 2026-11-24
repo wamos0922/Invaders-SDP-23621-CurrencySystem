@@ -2,7 +2,7 @@
 #
 # <body>                       (why, not what — wrap at 72)
 #
-# <footer>                     Closes #<issue>  |  Refs #<issue>
+# <footer>                     Refs GOG-<number>   (optional, Jira ticket)
 #
 # ---------------------------------------------------------------
 # type
@@ -21,6 +21,6 @@
 #   Adds SettingsScreen with volume placeholders. Sound team will
 #   wire the real toggles once their API lands.
 #
-#   Closes #7
+#   Refs GOG-7
 # ---------------------------------------------------------------
 # Enable once per clone:  git config commit.template .gitmessage.txt

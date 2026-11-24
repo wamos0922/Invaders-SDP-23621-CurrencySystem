@@ -52,7 +52,7 @@ public class ShopScreen extends Screen {
 		/** Ship looks: alternative shapes for each ship (A1). */
 		LOOKS("Looks", new Color(120, 200, 255)),
 		/** Item team upgrades. */
-		UPGRADES("Upgrades", new Color(255, 200, 0)),
+		UPGRADES("Items", new Color(255, 200, 0)),
 		/** Placeholder for visual effects. */
 		EFFECTS("Effects", new Color(255, 140, 0)),
 		/** Today's discounts. */
@@ -1010,14 +1010,9 @@ public class ShopScreen extends Screen {
 				break;
 			}
 			case UPGRADE: {
-				if (!purchases.isOwned(item)) {
-					lines.add("ONE EQUIPPED AT A TIME");
-				} else {
-					lines.add("OWNED - "
-							+ (purchases.isUpgradeOn(item.getRef()) ? "ON"
-							: "OFF"));
-					lines.add("SWITCH ON/OFF IN CUSTOMIZE");
-				}
+				if (purchases.isOwned(item))
+					lines.add("OWNED");
+				lines.add("EQUIP IN CUSTOMIZE > ITEMS");
 				break;
 			}
 			case EFFECT:

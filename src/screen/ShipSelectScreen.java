@@ -20,17 +20,18 @@ import shop.Skin;
 /**
  * Implements the ship select screen, shown as "Customize" in the menu.
  * The player chooses the ship and skin for the next run from what they
- * own, and switches bought upgrades on or off (any number can be on);
- * locked choices can be looked at but not used, and point to the shop.
- * The ship goes through Core.setSelectedShipType() (Mantis), the skin and
- * upgrades through {@link PurchaseManager}, as soon as they are chosen.
+ * own; locked choices can be looked at but not used, and point to the
+ * shop. The ship goes through Core.setSelectedShipType() (Mantis), the
+ * skin through {@link PurchaseManager}, as soon as they are chosen.
+ * The last row holds two buttons (GOG-50): ITEMS opens the item
+ * loadouts, SKILL TREE opens the browsed ship's skill tree (GOG-51).
  * Bought shop effects (VFX team) are switched on or off one by one in the
  * Effect row; any number can be on, and the ones that are on play in the
  * preview at the top.
  */
 public class ShipSelectScreen extends Screen {
 
-	/** Ship, look, colour, upgrade and effect choices. */
+	/** Ship, look, colour and effect choices, then the page buttons. */
 	private enum Row {
 		/** Ship type. */
 		SHIP("Ship"),
@@ -38,13 +39,13 @@ public class ShipSelectScreen extends Screen {
 		SHAPE("Look"),
 		/** Ship colour. */
 		SKIN("Skin"),
-		/** Item team upgrades, browsed and switched on/off one by one. */
-		UPGRADE("Upgrade"),
 		/**
 		 * Shop effects, browsed and switched on/off one by one; any number
 		 * can be on. AUTHORED BY: VFX TEAM (Effection)
 		 */
-		EFFECT("Effect");
+		EFFECT("Effect"),
+		/** SKILL TREE and ITEMS buttons (GOG-50). Replaces the Upgrade row. */
+		MENU("Open");
 
 		/** Label on the left of the row. */
 		private final String label;
@@ -85,10 +86,8 @@ public class ShipSelectScreen extends Screen {
 	/** Array of all available ship types. */
 	private final ShipType[] availableShips = ShipType.values();
 	/** All skins. */
+	/** All skins. */
 	private final Skin[] availableSkins = Skin.values();
-	/** Every upgrade sold in the shop. */
-	private final List<ShopItem> availableUpgrades =
-			ShopCatalog.getByCategory(ShopCategory.UPGRADE);
 	/** Every effect sold in the shop. AUTHORED BY: VFX TEAM (Effection) */
 	private final List<ShopItem> availableEffects =
 			ShopCatalog.getByCategory(ShopCategory.EFFECT);
@@ -100,8 +99,9 @@ public class ShipSelectScreen extends Screen {
 	/** 0 is the ship's original look, 1 and up its shape skins. */
 	private int shapeIndex;
 	private int skinIndex;
-	private int upgradeIndex;
 	private int effectIndex;
+	/** Button selected in the MENU row: 0 = SKILL TREE, 1 = ITEMS. */
+	private int menuButton;
 	/** Key states last frame, so a held key acts once. */
 	private boolean[] keysWereDown;
 	/** Mouse state last frame, so a held button clicks once. */
@@ -124,12 +124,8 @@ public class ShipSelectScreen extends Screen {
 		PurchaseManager loadout = PurchaseManager.getInstance();
 		// Open on the ship chosen last time instead of always the first one.
 		this.shipIndex = Core.getSelectedShipType().ordinal();
-		this.skinIndex = loadout.getSelectedSkin().ordinal();
+				this.skinIndex = loadout.getSelectedSkin().ordinal();
 		syncShapeIndex();
-		// Start on the first upgrade the player owns, if any.
-		for (int i = this.availableUpgrades.size() - 1; i >= 0; i--)
-			if (loadout.isOwned(this.availableUpgrades.get(i)))
-				this.upgradeIndex = i;
 		// Start on the first effect the player owns, if any.
 		for (int i = this.availableEffects.size() - 1; i >= 0; i--)
 			if (loadout.isOwned(this.availableEffects.get(i)))
@@ -180,8 +176,8 @@ public class ShipSelectScreen extends Screen {
 	private void handleKeys() {
 		boolean confirm = pressed(KeyEvent.VK_SPACE)
 				|| pressed(KeyEvent.VK_ENTER);
-		if (confirm && this.row == Row.UPGRADE) {
-			toggleUpgrade();
+		if (confirm && this.row == Row.MENU) {
+			openMenuButton();
 		} else if (confirm && this.row == Row.EFFECT) {
 			toggleEffect();
 		} else if (pressed(KeyEvent.VK_ESCAPE) || confirm) {
@@ -215,12 +211,14 @@ public class ShipSelectScreen extends Screen {
 			if (!area.contains(x, y))
 				continue;
 			this.row = each;
-			if (x < area.x + ARROW_WIDTH)
+			if (each == Row.MENU) {
+				// Left half is SKILL TREE, right half is ITEMS.
+				this.menuButton = x < area.x + area.width / 2 ? 0 : 1;
+				openMenuButton();
+			} else if (x < area.x + ARROW_WIDTH)
 				change(each, -1);
 			else if (x >= area.x + area.width - ARROW_WIDTH)
 				change(each, 1);
-			else if (each == Row.UPGRADE)
-				toggleUpgrade();
 			else if (each == Row.EFFECT)
 				toggleEffect();
 			return;
@@ -262,13 +260,11 @@ public class ShipSelectScreen extends Screen {
 			case SKIN:
 				this.skinIndex = Math.floorMod(this.skinIndex + step,
 						this.availableSkins.length);
-				loadout.selectSkin(this.availableSkins[this.skinIndex]);
+								loadout.selectSkin(this.availableSkins[this.skinIndex]);
 				break;
-			case UPGRADE:
-				// Browsing only: upgrades are switched with space or a click.
-				if (!this.availableUpgrades.isEmpty())
-					this.upgradeIndex = Math.floorMod(this.upgradeIndex + step,
-							this.availableUpgrades.size());
+			case MENU:
+				// Left/right moves between SKILL TREE and ITEMS.
+				this.menuButton = Math.floorMod(this.menuButton + step, 2);
 				break;
 		default:
 			// Browsing only: effects are switched with space or a click.
@@ -298,14 +294,15 @@ public class ShipSelectScreen extends Screen {
 		this.shapeIndex = worn == null ? 0
 				: browsableShapes().indexOf(worn) + 1;
 	}
-
-	/** Switches the browsed upgrade on or off, if it is owned. */
-	private void toggleUpgrade() {
-		ShopItem upgrade = browsedUpgrade();
-		if (upgrade != null && PurchaseManager.getInstance().isOwned(upgrade))
-			PurchaseManager.getInstance().toggleUpgrade(upgrade.getRef());
+	/**
+	 * Opens the page of the selected MENU button (GOG-50).
+	 */
+	private void openMenuButton() {
+		if (this.menuButton == 0)
+			return; // The skill tree page comes with GOG-51.
+		this.returnCode = ItemsScreen.CODE;
+		this.isRunning = false;
 	}
-
 	/**
 	 * Switches the browsed effect on or off, if it is owned. Other effects
 	 * stay as they are. AUTHORED BY: VFX TEAM (Effection)
@@ -320,12 +317,6 @@ public class ShipSelectScreen extends Screen {
 				: this.availableEffects.get(this.effectIndex);
 	}
 
-	/** @return Upgrade shown in the upgrade row, or null if none are sold. */
-	private ShopItem browsedUpgrade() {
-		return this.availableUpgrades.isEmpty() ? null
-				: this.availableUpgrades.get(this.upgradeIndex);
-	}
-
 	// --- State of each row ---
 
 	private boolean isUnlocked(final Row which) {
@@ -336,11 +327,12 @@ public class ShipSelectScreen extends Screen {
 			case SHAPE:
 				return browsedShape() == null
 						|| loadout.isShapeUnlocked(browsedShape());
-			case SKIN:
+						case SKIN:
 				return loadout.isSkinUnlocked(this.availableSkins[this.skinIndex]);
-			case UPGRADE:
-				return loadout.isOwned(browsedUpgrade());
+			case MENU:
+				return true;
 		default:
+			// No effects sold yet: nothing to unlock.
 			// No effects sold yet: nothing to unlock.
 			return browsedEffect() == null
 					|| loadout.isOwned(browsedEffect());
@@ -360,14 +352,7 @@ public class ShipSelectScreen extends Screen {
 				ShopItem effect = browsedEffect();
 				return effect == null ? "None" : effect.getName();
 			default:
-				ShopItem upgrade = browsedUpgrade();
-				if (upgrade == null)
-					return "None";
-				PurchaseManager loadout = PurchaseManager.getInstance();
-				if (!loadout.isOwned(upgrade))
-					return upgrade.getName();
-				return upgrade.getName()
-						+ (loadout.isUpgradeOn(upgrade.getRef()) ? " ON" : " OFF");
+				return this.menuButton == 0 ? "Skill tree" : "Items";
 		}
 	}
 
@@ -379,16 +364,10 @@ public class ShipSelectScreen extends Screen {
 	private ShopItem shopEntry(final Row which) {
 		switch (which) {
 			case SHIP:
-				return ShopCatalog.findByRef(ShopCategory.SHIP,
-						this.availableShips[this.shipIndex].name());
-			case SHAPE:
-				return browsedShape() == null ? null : ShopCatalog.findByRef(
-						ShopCategory.SHAPE, browsedShape().name());
-			case SKIN:
 				return ShopCatalog.findByRef(ShopCategory.SKIN,
 						this.availableSkins[this.skinIndex].name());
-			case UPGRADE:
-				return browsedUpgrade();
+			case MENU:
+				return null;
 		default:
 			return browsedEffect();
 		}
@@ -420,9 +399,10 @@ public class ShipSelectScreen extends Screen {
 			drawRow(each);
 		drawInfo();
 
-		boolean toggleRow = this.row == Row.UPGRADE || this.row == Row.EFFECT;
-		drawManager.drawKeyHints(this, toggleRow
+		drawManager.drawKeyHints(this, this.row == Row.EFFECT
 				? "up/down row | left/right browse | space on/off | esc back"
+				: this.row == Row.MENU
+				? "up/down row | left/right button | space open | esc back"
 				: "up/down row | left/right change | esc back");
 
 		drawManager.completeDrawing(this);
@@ -665,6 +645,10 @@ public class ShipSelectScreen extends Screen {
 
 	private void drawRow(final Row which) {
 		Rectangle area = rowArea(which);
+		if (which == Row.MENU) {
+			drawMenuButtons(area);
+			return;
+		}
 		boolean active = which == this.row;
 		boolean unlocked = isUnlocked(which);
 		Color accent = unlocked ? Color.GREEN : LOCKED;
@@ -695,6 +679,30 @@ public class ShipSelectScreen extends Screen {
 		drawManager.drawRegularString(name, area.x + area.width / 2
 						- drawManager.getRegularStringWidth(name) / 2 + 16, baseline,
 				nameColor);
+	}
+
+	/**
+	 * MENU row: two buttons side by side, SKILL TREE and ITEMS (GOG-50).
+	 *
+	 * @param area
+	 *            Row area.
+	 */
+	private void drawMenuButtons(final Rectangle area) {
+		String[] labels = { "SKILL TREE", "ITEMS" };
+		int gap = 8;
+		int buttonWidth = (area.width - gap) / 2;
+		for (int i = 0; i < labels.length; i++) {
+			int x = area.x + i * (buttonWidth + gap);
+			boolean selected = this.row == Row.MENU && this.menuButton == i;
+			if (selected)
+				drawManager.fillBox(x, area.y, buttonWidth, area.height,
+						new Color(0, 255, 0, 40));
+			drawManager.drawBox(x, area.y, buttonWidth, area.height,
+					selected ? Color.GREEN : BORDER);
+			drawManager.drawRegularString(labels[i], x + buttonWidth / 2
+					- drawManager.getRegularStringWidth(labels[i]) / 2,
+					area.y + 20, selected ? Color.GREEN : Color.WHITE);
+		}
 	}
 
 	/**
@@ -750,7 +758,7 @@ public class ShipSelectScreen extends Screen {
 
 	/** Ship stats, then what the selected row's choice means. */
 	private void drawInfo() {
-		Rectangle last = rowArea(Row.EFFECT);
+		Rectangle last = rowArea(Row.MENU);
 		int lineHeight = drawManager.getSmallLineHeight();
 		int y = last.y + last.height + 22;
 
@@ -775,18 +783,14 @@ public class ShipSelectScreen extends Screen {
 			boolean on = PurchaseManager.getInstance().isEffectOn(effect);
 			status = effect.getName() + (on
 					? " is on - space to switch off"
-					: " is off - space to switch on");
+										: " is off - space to switch on");
 			color = on ? Color.GREEN : Color.GRAY;
-		} else if (this.row == Row.UPGRADE && isUnlocked(this.row)) {
-			boolean on = PurchaseManager.getInstance().isUpgradeOn(
-					browsedUpgrade().getRef());
-			status = browsedUpgrade().getName() + (on
-					? " is on - space to switch off"
-					: " is off - space to switch on");
-			color = on ? Color.GREEN : Color.GRAY;
+		} else if (this.row == Row.MENU) {
+			status = this.menuButton == 0 ? "Skill tree coming soon"
+					: "Space to equip items for Endless and Story";
+			color = this.menuButton == 0 ? Color.GRAY : Color.GREEN;
 		} else if (isUnlocked(this.row)) {
-			status = this.row == Row.UPGRADE ? "No upgrades in the shop"
-					: this.row == Row.EFFECT ? "No effects in the shop yet"
+			status = this.row == Row.EFFECT ? "No effects in the shop yet"
 					: choiceName(this.row) + " is equipped";
 			color = browsedEffect() == null && this.row == Row.EFFECT
 					? Color.GRAY : Color.GREEN;
@@ -809,14 +813,13 @@ public class ShipSelectScreen extends Screen {
 		}
 		status = status.toUpperCase();
 		drawManager.drawSmallString(status, this.width / 2
-				- drawManager.getSmallStringWidth(status) / 2, y, color);
+								- drawManager.getSmallStringWidth(status) / 2, y, color);
 
-		if (this.row == Row.UPGRADE || this.row == Row.EFFECT) {
-			ShopItem upgrade = this.row == Row.UPGRADE ? browsedUpgrade()
-					: browsedEffect();
-			if (upgrade != null) {
+		if (this.row == Row.EFFECT) {
+			ShopItem effect = browsedEffect();
+			if (effect != null) {
 				int lineY = y + lineHeight + 4;
-				for (String line : wrap(upgrade.getDescription().toUpperCase(),
+				for (String line : wrap(effect.getDescription().toUpperCase(),
 						this.width - MARGIN * 2)) {
 					drawManager.drawSmallString(line, this.width / 2
 									- drawManager.getSmallStringWidth(line) / 2,

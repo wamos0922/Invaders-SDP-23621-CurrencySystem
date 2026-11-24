@@ -309,6 +309,6 @@ public final class ItemManager {
         if (active) throw new IllegalStateException("equip before the first level");
         ItemEffectSystem.Applied applied = effects.apply(item, null);
         if (applied.failure != null) throw new IllegalStateException("cannot equip " + item.itemId);
-        magnetEquipped = item.effectKind == EffectKind.MAGNET;
+        magnetEquipped = magnetEquipped || item.effectKind == EffectKind.MAGNET; // several items can be equipped (GOG-50)
     }
 }

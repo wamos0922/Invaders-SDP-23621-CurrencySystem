@@ -3,7 +3,7 @@
 
 ## Why
 <!-- Which requirement / issue? Why now? -->
-Closes #
+Ticket: GOG-<number>   <!-- also put the key in the PR title, e.g. feat: add mode select menu (GOG-12) -->
 
 ## Changes
 - 
@@ -18,9 +18,11 @@ Closes #
 <!-- Required for anything visible on screen -->
 
 ## Checklist
-- [ ] Branch is `<team>/<feature>` and based on latest `main`
+- [ ] Branch is `GOG-<number>-<short-feature>` (key in UPPERCASE) and based on latest `main`
+- [ ] PR title is `<type>: <subject> (GOG-<number>)`
 - [ ] One feature per PR, under ~400 changed lines
 - [ ] CI is green
 - [ ] Touches `DrawManager` / `Core` / `GameScreen`? → explained above
 - [ ] I ran the game after my change
-- [ ] Upstream PR? → title is `type(requirement): subject`; if it depends on another PR, `Depends on: #N` is the first line of this description
+- [ ] Depends on another PR? → `Depends on: #N` is the first line of this description
+- [ ] Reviewer requested: Haikal or Akif

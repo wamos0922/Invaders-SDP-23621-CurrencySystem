@@ -106,20 +106,21 @@ public final class ShopCatalog {
 		for (ShapeSkin shape : ShapeSkin.values())
 			items.add(shape(shape));
 
-		// Upgrades (Item team): either currency. Item System rule: equipped
-		// items have no levels, so each one is bought once and only one is
-		// on at a time.
+		// Items (Item team, renamed from upgrades in GOG-50): either
+		// currency, bought once, equipped in Customize > Items (3 slots in
+		// Endless, 1 in Story). The ids stay the same so old saves still
+		// work.
 		// upgrade(id, name, description, coins, diamonds)
-		items.add(upgrade("extra_slots", "Extra Slots", "More item slots"
-				+ " in every run.", 60, 30));
-		items.add(upgrade("magnet", "Magnet", "Picks up items as soon as"
-				+ " they land.", 50, 25));
-		items.add(upgrade("max_life", "Max Life", "Life items can take you"
-				+ " higher than the normal cap.", 80, 40));
-		items.add(upgrade("long_lasting", "Long Lasting", "Shield, freeze"
-				+ " and boosts last longer.", 50, 25));
+		items.add(upgrade("extra_slots", "Cargo Pod", "Makes room for one"
+				+ " more item in every run.", 60, 30));
+		items.add(upgrade("magnet", "Magnet Core", "Pulls dropped items to"
+				+ " you as soon as they land.", 50, 25));
+		items.add(upgrade("max_life", "Life Capsule", "Lets life pickups take"
+				+ " you past the normal life cap.", 80, 40));
+		items.add(upgrade("long_lasting", "Time Crystal", "Makes shield,"
+				+ " freeze and boosts last longer.", 50, 25));
 
-		// Effects (VFX team, Effection): bought once, either currency.
+				
 		// Each effect PR adds its own line here with effect(...).
 		items.add(effect("lightning_chain", "Lightning Chain", "Kills chain"
 				+ " lightning to nearby enemies. Streaks turn it violet,"

@@ -2,10 +2,10 @@ name: PR title
 
 # Checks that a pull request title follows our commit format, because the
 # title becomes the squash commit on main. See CONTRIBUTING.md.
-#   format:  type: subject   or   type(scope): subject
+#   format:  type: subject (GOG-<number>)     e.g. feat: add mode select menu (GOG-12)
 #   types:   feat fix docs refactor test ci chore style
-# A wrong format fails the check. A title over 50 characters only warns.
-# Runs only in our fork, so other teams' upstream PRs are not checked.
+# A wrong format fails the check. A title over 72 characters only warns.
+# Runs only in our own repo.
 
 on:
   pull_request:
@@ -13,19 +13,19 @@ on:
 
 jobs:
   title:
-    if: github.repository == 'eoieiie/Invaders-SDP-23621'
+    if: github.repository == 'haikalfiqri/SpaceInvaderGoG'
     runs-on: ubuntu-latest
     steps:
       - name: Check title
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat|fix|docs|refactor|test|ci|chore|style)(\([a-z0-9-]+\))?: [^ ](.*[^.])?$'
+          pattern='^(feat|fix|docs|refactor|test|ci|chore|style): [^ ].* \(GOG-[0-9]+\)$'
           if [[ ! "$TITLE" =~ $pattern ]]; then
-            echo "::error title=PR title format::Expected 'type: subject' (types: feat fix docs refactor test ci chore style), no full stop at the end. Got: $TITLE"
+            echo "::error title=PR title format::Expected 'type: subject (GOG-12)' (types: feat fix docs refactor test ci chore style), with the ticket key at the end in brackets. Got: $TITLE"
             exit 1
           fi
-          if (( ${#TITLE} > 50 )); then
-            echo "::warning title=PR title length::${#TITLE} characters. Try to keep it under 50, since it becomes the commit title on main."
+          if (( ${#TITLE} > 72 )); then
+            echo "::warning title=PR title length::${#TITLE} characters. Try to keep it under 72, since it becomes the commit title on main."
           fi
           echo "OK: $TITLE"

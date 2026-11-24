@@ -167,6 +167,12 @@ public final class DrawManager {
 		FinalBoss1,
 		FinalBoss2,
 
+		/** Story tutorial (GOG-31): security drone, first frame. */
+		TutorialDrone1,
+		/** Story tutorial (GOG-31): security drone, second frame. */
+		TutorialDrone2,
+		/** Story tutorial (GOG-31): power cell pickup. */
+		TutorialCell,
 		/** Act 1 (Earth Escape) row 1: Overseer, AI command unit. */
 		Overseer1,
 		Overseer2,
@@ -269,6 +275,10 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.ShipSkinD2, new boolean[13][8]);
 			spriteMap.put(SpriteType.ShipSkinD3, new boolean[13][8]);
 
+			// Story tutorial (GOG-31)
+			spriteMap.put(SpriteType.TutorialDrone1, new boolean[12][8]);
+			spriteMap.put(SpriteType.TutorialDrone2, new boolean[12][8]);
+			spriteMap.put(SpriteType.TutorialCell, new boolean[8][8]);
 			// Act 1 (Earth Escape) enemies, one pair of frames per row.
 			spriteMap.put(SpriteType.Overseer1, new boolean[12][8]);
 			spriteMap.put(SpriteType.Overseer2, new boolean[12][8]);
@@ -2417,6 +2427,24 @@ public final class DrawManager {
 						final int width, final int height, final Color color) {
 		backBufferGraphics.setColor(color);
 		backBufferGraphics.fillRect(positionX, positionY, width, height);
+	}
+
+	/**
+	 * Draws a picture scaled to a box, keeping hard pixel edges
+	 * (shard icons, GOG-51).
+	 *
+	 * @param image     Picture to draw; nothing is drawn if null.
+	 * @param positionX Horizontal position of the left edge.
+	 * @param positionY Vertical position of the top edge.
+	 * @param width     Width on screen.
+	 * @param height    Height on screen.
+	 */
+	public void drawImage(final BufferedImage image, final int positionX,
+						  final int positionY, final int width, final int height) {
+		if (image == null)
+			return;
+		backBufferGraphics.drawImage(image, positionX, positionY, width,
+				height, null);
 	}
 
 	/**
