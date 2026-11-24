@@ -41,6 +41,7 @@ import entity.Coin;
 import entity.CoinPool;
 import entity.EnemyShip;
 import entity.Boss;
+import entity.EnemyType;
 import entity.FinalBoss;
 import entity.TempestQueen;
 import entity.EnemyShipFormation;
@@ -104,6 +105,8 @@ public class GameScreen extends Screen {
 	private static final int ACHIEVEMENT_POPUP_SLIDE_OUT = 350;
 	/** Height of the interface separation line. */
 	private static final int SEPARATION_LINE_HEIGHT = 40;
+	/** Speed of a Mite's shrapnel bullets (GOG-86). */
+	private static final int MITE_SHRAPNEL_SPEED = 4;
 	/**
 	 * Highest the ship may fly in endless free roam (GOG-7): below the HUD,
 	 * the item slots and the bonus ship's lane.
@@ -245,6 +248,12 @@ public class GameScreen extends Screen {
 	 * the AI Warship is destroyed; null on every other level.
 	 */
 	private BlackHoleScene blackHole;
+	/** True while a Stinger hit keeps the player at 1 life (GOG-86). */
+	private boolean vulnerableActive;
+	/** Lives the player had when the Stinger hit, given back later (GOG-86). */
+	private int livesBeforeVulnerable;
+	/** When the 1-life period ends (GOG-86). */
+	private long vulnerableUntil;
 	/** Sparkles from destroyed ships. AUTHORED BY: VFX TEAM (Effection) */
 	private List<Particle> particles = new ArrayList<Particle>();
 	/** Colors the sparkles can have. AUTHORED BY: VFX TEAM (Effection) */
@@ -456,7 +465,9 @@ public class GameScreen extends Screen {
 		this.items = ItemSystem.forLevel(this.level);
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
-					public int getLives() { return lives; }
+					// Real lives, also while a Stinger holds them at 1, so the
+					// life item respects the cap (GOG-86).
+					public int getLives() { return realLives(); }
 					public void addLife() { lives++; }
 					public void addScore(final int points) { score += points; }
 				});
@@ -612,8 +623,10 @@ public class GameScreen extends Screen {
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.midBoss.shoot(this.bullets, this.gameSettings);
 			} else {
-				if (!this.items.enemiesFrozen())
+				if (!this.items.enemiesFrozen()) {
 					this.enemyShipFormation.update();
+					this.enemyShipFormation.updateDives(); // Comet kamikaze (GOG-86)
+				}
 				this.enemyShipFormation.shoot(this.bullets);
 				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
@@ -626,6 +639,9 @@ public class GameScreen extends Screen {
 				&& !this.levelFinished && this.lives > 0
 				&& !this.ship.isDestroyed());
 		manageCollisions();
+		handleCometBlasts(); // GOG-86
+		handleMiteBooms(); // GOG-86
+		updateVulnerable(); // GOG-86
 		manageFreeRoamCrashes();
 		showScoreBoostPopups(); // Item System (Team CS)
 		cleanBullets();
@@ -652,6 +668,9 @@ public class GameScreen extends Screen {
 				? this.midBoss.isDestroyed() : this.enemyShipFormation.isEmpty();
 		if ((isCleared || this.lives == 0)
 				&& !this.levelFinished) {
+			// Lives held at 1 by a Stinger come back when the level is won.
+			if (isCleared)
+				endVulnerable();
 			this.levelFinished = true;
 			this.screenFinishedCooldown.reset();
 
@@ -908,6 +927,9 @@ public class GameScreen extends Screen {
 			this.midBoss.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		}
+		// Pausing doesn't use up the 1-life period (GOG-86).
+		if (this.paused && this.vulnerableActive)
+			this.vulnerableUntil += System.currentTimeMillis() - this.pauseStartedAt;
 		// Pausing doesn't use up a freeze (GOG-84).
 		if (this.paused)
 			this.ship.resumeAfterPause(
@@ -928,6 +950,7 @@ public class GameScreen extends Screen {
 	private void restartLevel() {
 		this.score = this.initialScore;
 		this.lives = this.initialLives;
+		this.vulnerableActive = false; // GOG-86
 		this.bulletsShot = this.initialBulletsShot;
 		this.shipsDestroyed = this.initialShipsDestroyed;
 		this.pendingDiamonds = this.initialPendingDiamonds;
@@ -1038,6 +1061,14 @@ public class GameScreen extends Screen {
 		// Interface.
 		drawManager.drawScore(this, this.score);
 		drawManager.drawLives(this, this.lives);
+		// Stinger hit: show how long the player stays at 1 life (GOG-86).
+		if (this.vulnerableActive) {
+			long left = Math.max(0, this.vulnerableUntil
+					- System.currentTimeMillis());
+			drawManager.drawCenteredRegularString(this, "VULNERABLE "
+					+ ((left + 999) / 1000), SEPARATION_LINE_HEIGHT + 20,
+					EnemyType.VULNERABLE_BULLET_COLOR);
+		}
 		drawManager.drawLevel(this, this.level);
 		// Explicit Y (36, not the 25 default): the level indicator now
 		// sits centred at y=14, and the coin icon is tall enough that at
@@ -1222,9 +1253,13 @@ public class GameScreen extends Screen {
 		Set<Bullet> recyclable = new HashSet<Bullet>();
 		for (Bullet bullet : this.bullets) {
 			if (bullet.getSpeed() > 0) {
-				if (checkCollision(bullet, this.ship) && !this.levelFinished) {
+				if (checkCollision(bullet, this.ship) && !this.levelFinished
+						&& !recyclable.contains(bullet)) {
 					recyclable.add(bullet);
-					if (bullet.isFreezing()) {
+					if (bullet.isVulnerable()) {
+						// Stinger bullet: 1 life left for 5 s (GOG-86).
+						startVulnerable();
+					} else if (bullet.isFreezing()) {
 						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
 						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
@@ -1240,6 +1275,13 @@ public class GameScreen extends Screen {
 					}
 				}
 			} else {
+				// Stinger bullets can be shot down (GOG-86).
+				Bullet shotDown = findVulnerableBulletHit(bullet, recyclable);
+				if (shotDown != null) {
+					recyclable.add(bullet);
+					recyclable.add(shotDown);
+					continue;
+				}
 				// Boss stages are the ones that actually spawned a boss, so
 				// endless waves 5 and 10 hit their formation (GOG-7).
 				if (this.midBoss != null) {
@@ -1264,6 +1306,13 @@ public class GameScreen extends Screen {
 						if (!enemyShip.isDestroyed()
 								&& checkCollision(bullet, enemyShip)) {
 							recyclable.add(bullet);
+							// Comet: the first hit sends it diving at the
+							// player instead of killing it (GOG-86).
+							if (this.enemyShipFormation.startDive(enemyShip,
+									this.ship)) {
+								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
+								continue;
+							}
 							// Surviving hits consume the bullet without awarding kill rewards.
 							if (!enemyShip.takeDamage(1)) {
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
@@ -1323,10 +1372,6 @@ public class GameScreen extends Screen {
 	}
 
 	/**
-	 * @return Centers of all enemies that are still alive.
-	 *         AUTHORED BY: VFX TEAM (Effection)
-	 */
-	/**
 	 * Checks a player bullet against the boss's minions (GOG-75). A kill
 	 * gives the same rewards as a normal enemy; a hit that a shield absorbs
 	 * only plays the hit sound.
@@ -1343,25 +1388,186 @@ public class GameScreen extends Screen {
 				SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
 				return true;
 			}
-			this.score += this.items.scoreFor(minion.getPointValue());
-			this.shipsDestroyed++;
-			spawnSparkles(minion);
 			minion.destroy();
-			this.screenShake.trigger();
-			this.pointsEffect.spawn(
-					minion.getPositionX() + minion.getWidth() / 2,
-					minion.getPositionY() + minion.getHeight() / 2,
-					minion.getPointValue());
-			queueScoreBoostPopup(minion, false); // Item System (Team CS)
-			maybeDropCoin(minion);
-			this.items.onEnemyDefeated(minion, false);
-			showUnlockedAchievement(Core.getAchievementManager()
-					.recordEnemyDefeated());
+			rewardKill(minion);
 			return true;
 		}
 		return false;
 	}
 
+	/**
+	 * Gives the rewards for an enemy the player killed outside the normal
+	 * bullet hit: score, sparkles, points popup, coin and item chances,
+	 * achievements (boss minions GOG-75, Mite chain kills GOG-86).
+	 *
+	 * @param enemy
+	 *            Enemy that was just destroyed.
+	 */
+	private void rewardKill(final EnemyShip enemy) {
+		this.score += this.items.scoreFor(enemy.getPointValue());
+		this.shipsDestroyed++;
+		spawnSparkles(enemy);
+		this.screenShake.trigger();
+		this.pointsEffect.spawn(
+				enemy.getPositionX() + enemy.getWidth() / 2,
+				enemy.getPositionY() + enemy.getHeight() / 2,
+				enemy.getPointValue());
+		queueScoreBoostPopup(enemy, false); // Item System (Team CS)
+		maybeDropCoin(enemy);
+		this.items.onEnemyDefeated(enemy, false);
+		showUnlockedAchievement(Core.getAchievementManager()
+				.recordEnemyDefeated());
+	}
+
+	/**
+	 * Finds a Stinger bullet that a player bullet touches (GOG-86).
+	 *
+	 * @param playerBullet
+	 *            Player bullet.
+	 * @param recyclable
+	 *            Bullets already being removed this frame.
+	 * @return The Stinger bullet hit, or null.
+	 */
+	private Bullet findVulnerableBulletHit(final Bullet playerBullet,
+			final Set<Bullet> recyclable) {
+		for (Bullet other : this.bullets)
+			if (other.isVulnerable() && other.getSpeed() > 0
+					&& !recyclable.contains(other)
+					&& checkCollision(playerBullet, other))
+				return other;
+		return null;
+	}
+
+	/**
+	 * A Comet reached the spot it locked onto and exploded (GOG-86). The
+	 * player loses a life if the ship's centre is still within
+	 * {@link EnemyType#COMET_BLAST_RADIUS}; a shield blocks it.
+	 */
+	private void handleCometBlasts() {
+		if (this.enemyShipFormation == null)
+			return;
+		for (java.awt.Point blast : this.enemyShipFormation.takeDetonations()) {
+			this.screenShake.trigger();
+			if (this.levelFinished || this.ship.isDestroyed()
+					|| this.lives <= 0)
+				continue;
+			double dx = this.ship.getPositionX() + this.ship.getWidth() / 2.0
+					- blast.x;
+			double dy = this.ship.getPositionY() + this.ship.getHeight() / 2.0
+					- blast.y;
+			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
+				continue;
+			if (this.items.tryBlockHit()) { // Shield item (Team CS)
+				this.logger.info("Comet blast blocked by shield.");
+				continue;
+			}
+			this.ship.destroy();
+			this.lives--;
+			PlayerSounds.playHit(this.lives);
+			this.tookDamage = true;
+			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+			this.logger.info("Caught in a Comet blast, " + this.lives
+					+ " lives remaining.");
+		}
+	}
+
+	/**
+	 * Mites that died explode (GOG-86): 3 shrapnel bullets spray downward
+	 * and every enemy within {@link EnemyType#MITE_BLAST_RADIUS} takes 1 hit.
+	 * Enemies killed that way give normal rewards, and a Mite killed by a
+	 * blast explodes too (chain reaction).
+	 */
+	private void handleMiteBooms() {
+		if (this.enemyShipFormation == null)
+			return;
+		java.util.List<java.awt.Point> booms =
+				this.enemyShipFormation.takeMiteBooms();
+		while (!booms.isEmpty()) {
+			for (java.awt.Point boom : booms) {
+				for (int speedX : EnemyType.MITE_SHRAPNEL_SPEED_X) {
+					Bullet shrapnel = BulletPool.getBullet(boom.x, boom.y,
+							MITE_SHRAPNEL_SPEED);
+					shrapnel.setSpeedX(speedX);
+					this.bullets.add(shrapnel);
+				}
+				java.util.List<EnemyShip> hit = new java.util.ArrayList<EnemyShip>();
+				for (EnemyShip enemy : this.enemyShipFormation) {
+					if (enemy.isDestroyed())
+						continue;
+					double dx = enemy.getPositionX() + enemy.getWidth() / 2.0
+							- boom.x;
+					double dy = enemy.getPositionY() + enemy.getHeight() / 2.0
+							- boom.y;
+					if (Math.sqrt(dx * dx + dy * dy) <= EnemyType.MITE_BLAST_RADIUS)
+						hit.add(enemy);
+				}
+				for (EnemyShip enemy : hit)
+					if (!enemy.isDestroyed() && enemy.takeDamage(1)) {
+						rewardKill(enemy);
+						this.enemyShipFormation.destroy(enemy);
+					}
+			}
+			booms = this.enemyShipFormation.takeMiteBooms();
+		}
+	}
+
+	/**
+	 * A Stinger bullet hit the player (GOG-86): the lives drop to 1 for
+	 * {@link EnemyType#VULNERABLE_MILLIS}, then come back. A second Stinger
+	 * hit during that time does nothing. It isn't damage, so the shield
+	 * item doesn't block it.
+	 */
+	private void startVulnerable() {
+		if (this.vulnerableActive || this.ship.isDestroyed()
+				|| this.lives <= 0)
+			return;
+		this.vulnerableActive = true;
+		this.livesBeforeVulnerable = this.lives;
+		this.lives = 1;
+		this.vulnerableUntil = System.currentTimeMillis()
+				+ EnemyType.VULNERABLE_MILLIS;
+		PlayerSounds.playHit(this.lives);
+		this.logger.info("Hit by a Stinger bullet: 1 life left for 5 s.");
+	}
+
+	/**
+	 * @return The player's real lives: while a Stinger holds them at 1, the
+	 *         lives held back plus any gained meanwhile; otherwise the
+	 *         current lives (GOG-86).
+	 */
+	private int realLives() {
+		if (this.vulnerableActive && this.lives > 0)
+			return this.livesBeforeVulnerable + this.lives - 1;
+		return this.lives;
+	}
+
+	/** Gives the lives back once the 1-life period is over (GOG-86). */
+	private void updateVulnerable() {
+		if (this.vulnerableActive && !this.paused
+				&& System.currentTimeMillis() >= this.vulnerableUntil)
+			endVulnerable();
+	}
+
+	/**
+	 * Ends the 1-life period: the lives held back come back, plus any life
+	 * gained meanwhile. Losing the last life during it is a game over, so
+	 * nothing comes back then.
+	 */
+	private void endVulnerable() {
+		if (!this.vulnerableActive)
+			return;
+		this.vulnerableActive = false;
+		if (this.lives > 0) {
+			this.lives = this.livesBeforeVulnerable + this.lives - 1;
+			this.logger.info("Lives back to " + this.lives + ".");
+		}
+		// vulnerableActive is false now, so realLives() == lives again.
+	}
+
+	/**
+	 * @return Centers of all enemies that are still alive.
+	 *         AUTHORED BY: VFX TEAM (Effection)
+	 */
 	private java.util.List<java.awt.Point> aliveEnemyCenters() {
 		java.util.List<java.awt.Point> centers = new java.util.ArrayList<java.awt.Point>();
 		for (EnemyShip e : this.enemyShipFormation)
@@ -1604,7 +1810,7 @@ public class GameScreen extends Screen {
 	 * @return Current game state.
 	 */
 	public final GameState getGameState() {
-		return new GameState(this.level, this.score, this.lives,
+		return new GameState(this.level, this.score, realLives(),
 				this.bulletsShot, this.shipsDestroyed, this.pendingDiamonds,
 				this.levelsCompletedRun, this.coinsCollected);
 	}
