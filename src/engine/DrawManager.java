@@ -1882,6 +1882,21 @@ public final class DrawManager {
 
 
 	/**
+	 * Draws a full-screen story background (GOG-14). Call it right after
+	 * initDrawing so everything else is drawn on top.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param background
+	 *            Image to stretch over the whole screen.
+	 */
+	public void drawBackground(final Screen screen,
+			final BufferedImage background) {
+		backBufferGraphics.drawImage(background, 0, 0, screen.getWidth(),
+				screen.getHeight(), null);
+	}
+
+	/**
 	 * Draws the scrolling stars behind the main menu. Call it right after
 	 * initDrawing so everything else is drawn on top.
 	 *
