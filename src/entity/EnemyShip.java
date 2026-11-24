@@ -37,12 +37,14 @@ public class EnemyShip extends Entity {
 	public static final Color EARTH_CLOUD = new Color(0xEEF3F7);
 	/** earth-sky: Hunter Jet. */
 	public static final Color EARTH_SKY = new Color(0x7FD4FF);
-	/** earth-land: Warden Bot. */
+	/** earth-land: Warden Bot and the boss's Repair Drones. */
 	public static final Color EARTH_LAND = new Color(0x5CC86A);
 	/** earth-desert: Crawler. */
 	public static final Color EARTH_DESERT = new Color(0xE0AA5E);
-	/** earth-ocean: Sentry Drone. */
+	/** earth-ocean: Sentry Drone and the Level 10 AI Warship. */
 	public static final Color EARTH_OCEAN = new Color(0x4A8CFF);
+	/** earth-magma: AI Warship in phase 2, at half health (GOG-78). */
+	public static final Color EARTH_MAGMA = new Color(0xFF6A3D);
 
 	/**
 	 * Colour the ship returns to once it is no longer a two-hit elite or

@@ -208,7 +208,13 @@ public final class DrawManager {
 		TempestQueen1,
 		TempestQueen2,
 		/** Tempest Queen's Gas Shield outline, 28 x 20 (GoG, GOG-75). */
-		GasShield
+		GasShield,
+		/** Level 10 boss AI Warship, two frames, 24 x 16 (GoG, GOG-78). */
+		AIWarship1,
+		AIWarship2,
+		/** Repair Drone that heals the AI Warship, two frames, 12 x 8 (GoG, GOG-78). */
+		RepairDrone1,
+		RepairDrone2
 	};
 
 	/**
@@ -307,6 +313,12 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.TempestQueen1, new boolean[24][16]);
 			spriteMap.put(SpriteType.TempestQueen2, new boolean[24][16]);
 			spriteMap.put(SpriteType.GasShield, new boolean[28][20]);
+
+			// Level 10 boss AI Warship and its Repair Drone (GoG, GOG-78)
+			spriteMap.put(SpriteType.AIWarship1, new boolean[24][16]);
+			spriteMap.put(SpriteType.AIWarship2, new boolean[24][16]);
+			spriteMap.put(SpriteType.RepairDrone1, new boolean[12][8]);
+			spriteMap.put(SpriteType.RepairDrone2, new boolean[12][8]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
