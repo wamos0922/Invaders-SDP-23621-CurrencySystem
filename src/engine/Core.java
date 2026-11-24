@@ -496,6 +496,14 @@ public final class Core {
 							new ItemsScreen(width, height, FPS);
 
 					returnCode = frame.setScreen(currentScreen);
+										break;
+
+				case SkillTreeScreen.CODE:
+					// Skill tree page, opened from Customize (GOG-51).
+					currentScreen =
+							new SkillTreeScreen(width, height, FPS);
+
+					returnCode = frame.setScreen(currentScreen);
 					break;
 
 				default:
