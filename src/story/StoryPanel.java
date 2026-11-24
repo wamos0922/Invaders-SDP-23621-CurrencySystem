@@ -16,7 +16,7 @@ import java.util.Map;
 /**
  * Story Mode cutscene player.
  *
- * - Background images for Panels 1-5
+ * - Background images for Panels 1-33
  * - Backgrounds fill the scene rectangle without stretching
  * - Center-crops images to remove black gaps
  * - Pixel-art nearest-neighbor rendering
@@ -356,8 +356,9 @@ public class StoryPanel extends JPanel {
 
     private BufferedImage loadSceneImage(int number) {
 
-        // Only panels 1-5 currently have backgrounds.
-        if (number < 1 || number > 5) {
+        // Load background images for panels 1-33.
+        // Missing images fall back to a black background.
+        if (number < 1 || number > 33) {
             return null;
         }
 
@@ -636,10 +637,7 @@ public class StoryPanel extends JPanel {
             return;
         }
 
-        // We use center-cropping instead of stretching.
-        // The source area is chosen to match the
-        // aspect ratio of the scene rectangle.
-
+        // Center-crop the image without stretching it.
         int cropX = 0;
         int cropY = 0;
         int cropWidth = imageWidth;
@@ -654,7 +652,6 @@ public class StoryPanel extends JPanel {
         if (imageRatio > sceneRatio) {
 
             // Image is wider than the scene rectangle.
-            // Crop equal amounts from left and right.
             cropWidth = Math.max(
                     1,
                     (int) Math.round(
@@ -669,7 +666,6 @@ public class StoryPanel extends JPanel {
         } else if (imageRatio < sceneRatio) {
 
             // Image is taller than the scene rectangle.
-            // Crop equal amounts from top and bottom.
             cropHeight = Math.max(
                     1,
                     (int) Math.round(
@@ -682,7 +678,7 @@ public class StoryPanel extends JPanel {
             cropY = (imageHeight - cropHeight) / 2;
         }
 
-        // Destination: fills the ENTIRE scene rectangle.
+        // Destination: fills the entire scene rectangle.
         int destX1 = SCENE_X;
         int destY1 = SCENE_Y;
         int destX2 = SCENE_X + SCENE_WIDTH;
@@ -695,7 +691,6 @@ public class StoryPanel extends JPanel {
         int srcY2 = cropY + cropHeight;
 
         // Draw with nearest-neighbor interpolation.
-        // No black gaps and no deliberate stretching.
         g.drawImage(
                 currentSceneImage,
                 destX1,
@@ -1049,8 +1044,8 @@ public class StoryPanel extends JPanel {
 
                 StoryPanel panel =
                         new StoryPanel(
-                                1,
-                                5,
+                                6,
+                                8,
                                 window::dispose
                         );
 
