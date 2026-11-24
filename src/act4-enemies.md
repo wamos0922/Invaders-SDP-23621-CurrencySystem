@@ -59,7 +59,9 @@ The table is `ACT4_ROWS` in `engine/StoryMode.java`.
   the player is left with only 1 life for 5 s (`VULNERABLE_MILLIS`), then
   the lives come back. "VULNERABLE" and the seconds left show under the
   HUD. Any real hit during those 5 s is a game over. A second Stinger hit
-  during them does nothing. A life picked up meanwhile is kept on top.
+  during them does nothing. A life picked up meanwhile is kept on top; the
+  Life item counts the real lives (not the 1), so it never goes above the
+  max-lives cap.
   Pausing doesn't use up the 5 s, and winning the level gives the lives
   back. It isn't damage, so the shield item doesn't block it. The player
   can shoot Stinger bullets down (both bullets disappear).

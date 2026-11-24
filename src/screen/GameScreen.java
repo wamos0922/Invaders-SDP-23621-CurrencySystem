@@ -465,7 +465,9 @@ public class GameScreen extends Screen {
 		this.items = ItemSystem.forLevel(this.level);
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
-					public int getLives() { return lives; }
+					// Real lives, also while a Stinger holds them at 1, so the
+					// life item respects the cap (GOG-86).
+					public int getLives() { return realLives(); }
 					public void addLife() { lives++; }
 					public void addScore(final int points) { score += points; }
 				});
@@ -1528,6 +1530,17 @@ public class GameScreen extends Screen {
 		this.logger.info("Hit by a Stinger bullet: 1 life left for 5 s.");
 	}
 
+	/**
+	 * @return The player's real lives: while a Stinger holds them at 1, the
+	 *         lives held back plus any gained meanwhile; otherwise the
+	 *         current lives (GOG-86).
+	 */
+	private int realLives() {
+		if (this.vulnerableActive && this.lives > 0)
+			return this.livesBeforeVulnerable + this.lives - 1;
+		return this.lives;
+	}
+
 	/** Gives the lives back once the 1-life period is over (GOG-86). */
 	private void updateVulnerable() {
 		if (this.vulnerableActive && !this.paused
@@ -1548,6 +1561,7 @@ public class GameScreen extends Screen {
 			this.lives = this.livesBeforeVulnerable + this.lives - 1;
 			this.logger.info("Lives back to " + this.lives + ".");
 		}
+		// vulnerableActive is false now, so realLives() == lives again.
 	}
 
 	/**
@@ -1796,9 +1810,7 @@ public class GameScreen extends Screen {
 	 * @return Current game state.
 	 */
 	public final GameState getGameState() {
-		int livesOut = this.vulnerableActive && this.lives > 0
-				? this.livesBeforeVulnerable + this.lives - 1 : this.lives;
-		return new GameState(this.level, this.score, livesOut,
+		return new GameState(this.level, this.score, realLives(),
 				this.bulletsShot, this.shipsDestroyed, this.pendingDiamonds,
 				this.levelsCompletedRun, this.coinsCollected);
 	}

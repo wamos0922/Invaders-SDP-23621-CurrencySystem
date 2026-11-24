@@ -334,6 +334,42 @@ public final class Act4EnemyTest {
         call(vScreen, "updateVulnerable");
         check((Integer) get(vScreen, "lives") == 4, "Gained life kept on top");
 
+        // Reviewer's case (PR #33): at full lives, a Life item during the 5 s
+        // must not push lives above the cap once they come back.
+        GameScreen capScreen = screen(33, new GameSettings(3, 1, 30, 1600).withRowTypes(S));
+        Ship capShip = (Ship) get(capScreen, "ship");
+        @SuppressWarnings("unchecked")
+        Set<Bullet> capBullets = (Set<Bullet>) get(capScreen, "bullets");
+        Object items = get(capScreen, "items");
+        int maxLives = (Integer) get(items, "maxLives");
+        set(capScreen, "lives", maxLives);
+        Bullet capSting = new Bullet(capShip.getPositionX() + 4, capShip.getPositionY() + 2, 4);
+        capSting.setVulnerable(true);
+        capBullets.add(capSting);
+        call(capScreen, "manageCollisions");
+        check((Integer) get(capScreen, "lives") == 1, "Cap test: held at 1");
+        Object lifePort = get(items, "lifePort");
+        Method tryAddLife = lifePort.getClass().getMethod("tryAddLife");
+        tryAddLife.setAccessible(true);
+        tryAddLife.invoke(lifePort);
+        check((Integer) get(capScreen, "lives") == 1, "Life item at the cap gives no life while held at 1");
+        set(capScreen, "vulnerableUntil", System.currentTimeMillis() - 1);
+        call(capScreen, "updateVulnerable");
+        check((Integer) get(capScreen, "lives") == maxLives, "Lives come back to the cap, not above");
+        // Below the cap the Life item still works while held at 1.
+        set(capScreen, "lives", maxLives - 1);
+        Bullet capSting2 = new Bullet(capShip.getPositionX() + 4, capShip.getPositionY() + 2, 4);
+        capSting2.setVulnerable(true);
+        capBullets.add(capSting2);
+        call(capScreen, "manageCollisions");
+        tryAddLife.invoke(lifePort);
+        check((Integer) get(capScreen, "lives") == 2, "Below the cap: the life is added on top of the 1");
+        tryAddLife.invoke(lifePort);
+        check((Integer) get(capScreen, "lives") == 2, "A second Life item at the real cap is refused");
+        set(capScreen, "vulnerableUntil", System.currentTimeMillis() - 1);
+        call(capScreen, "updateVulnerable");
+        check((Integer) get(capScreen, "lives") == maxLives, "Comes back exactly at the cap");
+
         // Pause doesn't use up the 5 s.
         Bullet sting4 = new Bullet(vShip.getPositionX() + 4, vShip.getPositionY() + 2, 4);
         sting4.setVulnerable(true);
