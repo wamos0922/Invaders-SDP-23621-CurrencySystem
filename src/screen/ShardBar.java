@@ -67,6 +67,30 @@ final class ShardBar {
 			draw.drawImage(type.getImage(), x, y, size, size);
 		else
 			draw.fillBox(x, y, size, size, type.getColor());
+		}
+
+	/**
+	 * Draws a shard's animation at the current time (GOG-52). Common has
+	 * no animation and is drawn still.
+	 *
+	 * @param draw
+	 *            Draw manager.
+	 * @param type
+	 *            Shard type.
+	 * @param x
+	 *            Left edge.
+	 * @param y
+	 *            Top edge.
+	 * @param size
+	 *            Width and height.
+	 */
+	static void animatedIcon(final DrawManager draw, final ShardType type,
+			final int x, final int y, final int size) {
+		if (type.getFrame(System.currentTimeMillis()) != null)
+			draw.drawImage(type.getFrame(System.currentTimeMillis()), x, y,
+					size, size);
+		else
+			draw.fillBox(x, y, size, size, type.getColor());
 	}
 
 	/**

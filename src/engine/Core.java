@@ -496,7 +496,15 @@ public final class Core {
 							new ItemsScreen(width, height, FPS);
 
 					returnCode = frame.setScreen(currentScreen);
-										break;
+					break;
+
+				case ConverterScreen.CODE:
+					// Shard converter, opened from the skill tree (GOG-52).
+					currentScreen =
+							new ConverterScreen(width, height, FPS);
+
+					returnCode = frame.setScreen(currentScreen);
+					break;
 
 				case SkillTreeScreen.CODE:
 					// Skill tree page, opened from Customize (GOG-51).
