@@ -91,7 +91,7 @@ Key facts at the time:
 (*In Review* already exists but was unused. *Testing* is to be added; see the checklist.)
 
 **Rules**
-- **WIP limit:** at most 2 tickets In Progress per person.
+- **WIP limit:** at most 3 tickets In Progress per person (raised from 2 at Team Meeting #2, 25 Nov 2026).
 - **Weekly planning:** at the start of each week we choose what moves from Idea to To Do. Nothing is committed beyond that week.
 - **Weekly review and retro:** at the end of each week we note what finished, what slipped and what to change.
 - **Every ticket** has one owner, a due date, and a parent epic or feature.
@@ -99,11 +99,12 @@ Key facts at the time:
 - **Definition of Done:** PR merged, reviewed by one of the three reviewers (never the author), tests passing, and the ticket key (for example `GOG-12`) in the branch and PR title.
 - **Git conventions** (details in `CONTRIBUTING.md`): branch `GOG-<number>-<short-feature>` (key in uppercase so Jira links it); commit `<type>: <subject>` with optional `Refs GOG-<n>` footer; PR title `<type>: <subject> (GOG-<n>)`, checked by the `pr-title` workflow; squash and merge.
 - **Reviewers (agreed by the team, 23 Nov 2026):** three people review PRs, in this order of priority: Akif (main reviewer and tester), Ikhwan (2nd), Haikal (3rd). The author requests Akif first; if Akif is unavailable or is the author, Ikhwan; then Haikal.
+- **PR size:** one feature per PR, about 500 changed lines or fewer (raised from 400 at Team Meeting #2, 25 Nov 2026).
 - **Quality:** feature owners write unit tests; static analysis is run before the final week.
 
 ## 8. Changes and status
 
-Update this list as work is done. Last updated 17 Nov 2026, 17:00 KST.
+Update this list as work is done. Last updated 24 Nov 2026 (Team Meeting #2 decisions added below).
 
 **Done**
 - [x] Documentation epic **GOG-63** created, with one task **GOG-66** (checklist for README, process notes and presentation). GOG-64, 65 and 67 were deleted as duplicates.
@@ -114,11 +115,16 @@ Update this list as work is done. Last updated 17 Nov 2026, 17:00 KST.
 - [x] Reassignments applied (section 9). GOG-46, 48 and 49 were moved back to Ikhwan, and GOG-50 to 52 back to Amani, after review.
 - [x] Every non-epic ticket now sits under an epic. The project has 6 epics.
 
+**Team Meeting #2 (25 Nov 2026)**
+- [x] Decided: WIP limit raised from 2 to 3 tickets In Progress per person.
+- [x] Decided: PR size limit raised from 400 to 500 changed lines.
+- [ ] Still open from the meeting: assign an integration owner, set due dates for boss tickets GOG-74 to 86, feature freeze proposed for 4 Dec 2026.
+
 **Still to do**
 - [ ] Close or remove GOG-36 ("cancel").
 - [ ] Set GOG-18, GOG-19 and GOG-70 to In Progress.
 - [ ] Decide the owner of GOG-68 (static analysis) and the tool (SpotBugs, Checkstyle or SonarLint).
-- [ ] Add the Testing column and the WIP limit (In Review already exists; start using it).
+- [ ] Add the Testing column and set the WIP limit to 3 in Jira (In Review already exists; start using it).
 - [ ] Add due dates and Must / Should / Stretch labels.
 - [ ] Create the tester's tickets (on hold until Akif says what he prefers).
 - [ ] Decide whether to merge GOG-39 to 43 into one ticket "Design 5 shard rarities" (optional).
