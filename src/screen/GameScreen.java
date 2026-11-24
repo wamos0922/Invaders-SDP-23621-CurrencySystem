@@ -220,6 +220,11 @@ public class GameScreen extends Screen {
 	private Set<Bullet> bullets;
 	/** Set of coins currently dropped and falling on screen. */
 	private Set<Coin> coins;
+	/** Story background for this level, or null for endless mode (GOG-14). */
+	private java.awt.image.BufferedImage storyBackground;
+	/** Small animations on top of the story background (GOG-14). */
+	private engine.StoryBackgroundEffects backgroundEffects;
+
 	/** Coins picked up since this level (or its last restart) began. They
 	 * are already banked in CurrencyManager, so a restart has to take them
 	 * back, or restarting would be a free coin farm. */
@@ -353,6 +358,11 @@ public class GameScreen extends Screen {
 		this.gameSettings = gameSettings;
 		this.bonusLife = bonusLife;
 		this.level = gameState.getLevel();
+		// GOG-14: each part of the story has its own background.
+		this.storyBackground = EndlessMode.isEnabled() ? null
+				: engine.StoryBackgrounds.forLevel(this.level);
+		this.backgroundEffects = this.storyBackground == null ? null
+				: new engine.StoryBackgroundEffects(this.level, this.storyBackground);
 		this.score = gameState.getScore();
 		this.lives = gameState.getLivesRemaining();
 		if (this.bonusLife)
@@ -967,6 +977,10 @@ public class GameScreen extends Screen {
 	 */
 	private void draw() {
 		drawManager.initDrawing(this);
+		if (this.storyBackground != null) {
+			drawManager.drawBackground(this, this.storyBackground);
+			this.backgroundEffects.draw(drawManager, this);
+		}
 
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
