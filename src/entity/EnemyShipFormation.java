@@ -1,5 +1,6 @@
 package entity;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -99,6 +100,35 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private List<EnemyShip> shooters;
 	/** Number of not destroyed ships. */
 	private int shipCount;
+
+	/** Comets diving at the player, alive or fading out (GOG-86). */
+	private final List<Dive> dives = new ArrayList<Dive>();
+	/** Centres where diving Comets exploded, not yet handled by the game. */
+	private final List<Point> detonations = new ArrayList<Point>();
+	/** Centres where Mites died, not yet handled by the game. */
+	private final List<Point> miteBooms = new ArrayList<Point>();
+
+	/** A Comet flying in a straight line to where the player was. */
+	private static final class Dive {
+		/** The Comet. */
+		private final EnemyShip ship;
+		/** Exact position of its centre (sub-pixel). */
+		private double centerX;
+		/** Exact position of its centre (sub-pixel). */
+		private double centerY;
+		/** Where it explodes: the player's centre when it dove. */
+		private final int targetX;
+		/** Where it explodes: the player's centre when it dove. */
+		private final int targetY;
+
+		Dive(final EnemyShip ship, final int targetX, final int targetY) {
+			this.ship = ship;
+			this.centerX = ship.getPositionX() + ship.getWidth() / 2.0;
+			this.centerY = ship.getPositionY() + ship.getHeight() / 2.0;
+			this.targetX = targetX;
+			this.targetY = targetY;
+		}
+	}
 	/** True if the whole formation moves diagonally (Team A1). */
 	private boolean diagonalMovement;
 	/** Horizontal step of the diagonal movement: positive is right. */
@@ -201,6 +231,12 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 				// Story levels can set a type per row (GOG-84).
 				EnemyType type = gameSettings.getRowType(i);
+				// Mites never sit next to each other, so one boom can't chain
+				// (GOG-86): Mite rows alternate with Star Eaters in a
+				// checkerboard, so Mites only meet diagonally.
+				if (type == EnemyType.MITE
+						&& (i + this.enemyShips.indexOf(column)) % 2 == 1)
+					type = EnemyType.MITE_ROW_FILLER;
 				if (type.hasOwnSprites()) {
 					column.add(new EnemyShip(shipX, shipY, type, health));
 					this.shipCount++;
@@ -252,6 +288,140 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 			for (EnemyShip enemyShip : column)
 				drawManager.drawEntity(enemyShip, enemyShip.getPositionX(),
 						enemyShip.getPositionY());
+		for (Dive dive : this.dives)
+			drawManager.drawEntity(dive.ship, dive.ship.getPositionX(),
+					dive.ship.getPositionY());
+	}
+
+	/**
+	 * Comet kamikaze (GOG-86): the first player bullet that hits a Comet
+	 * doesn't kill it. Instead it leaves the formation, locks onto the
+	 * player's centre and dives there in a straight line (see
+	 * {@link #updateDives()}). A second hit while it dives kills it.
+	 *
+	 * @param enemy
+	 *            Enemy the player's bullet hit.
+	 * @param target
+	 *            Player ship.
+	 * @return True if the hit started a dive (the enemy is a Comet still in
+	 *         the formation); false for every other case.
+	 */
+	public final boolean startDive(final EnemyShip enemy, final Entity target) {
+		if (enemy.getType() != EnemyType.COMET || enemy.isDestroyed()
+				|| isDiving(enemy))
+			return false;
+		detach(enemy);
+		this.dives.add(new Dive(enemy,
+				target.getPositionX() + target.getWidth() / 2,
+				target.getPositionY() + target.getHeight() / 2));
+		this.logger.info("A Comet was hit and dives at the player.");
+		return true;
+	}
+
+	/**
+	 * @param enemy
+	 *            Enemy to check.
+	 * @return True if it is a Comet diving at the player (GOG-86).
+	 */
+	public final boolean isDiving(final EnemyShip enemy) {
+		for (Dive dive : this.dives)
+			if (dive.ship == enemy)
+				return true;
+		return false;
+	}
+
+	/**
+	 * Moves diving Comets, every frame (GOG-86). When one reaches the spot
+	 * it locked onto it explodes; the game reads the spot with
+	 * {@link #takeDetonations()} and hurts the player if the ship is still
+	 * within {@link EnemyType#COMET_BLAST_RADIUS}.
+	 */
+	public final void updateDives() {
+		java.util.Iterator<Dive> it = this.dives.iterator();
+		while (it.hasNext()) {
+			Dive dive = it.next();
+			if (dive.ship.isDestroyed()) {
+				dive.ship.update();
+				if (dive.ship.isFadeFinished())
+					it.remove();
+				continue;
+			}
+			double dx = dive.targetX - dive.centerX;
+			double dy = dive.targetY - dive.centerY;
+			double distance = Math.sqrt(dx * dx + dy * dy);
+			if (distance <= EnemyType.COMET_DIVE_SPEED) {
+				dive.centerX = dive.targetX;
+				dive.centerY = dive.targetY;
+				placeDive(dive);
+				dive.ship.destroy();
+				this.shipCount--;
+				this.detonations.add(new Point(dive.targetX, dive.targetY));
+				continue;
+			}
+			dive.centerX += dx / distance * EnemyType.COMET_DIVE_SPEED;
+			dive.centerY += dy / distance * EnemyType.COMET_DIVE_SPEED;
+			placeDive(dive);
+			dive.ship.update();
+		}
+	}
+
+	/** Moves a diving Comet's sprite to its exact centre. */
+	private void placeDive(final Dive dive) {
+		dive.ship.setPositionX((int) Math.round(dive.centerX
+				- dive.ship.getWidth() / 2.0));
+		dive.ship.setPositionY((int) Math.round(dive.centerY
+				- dive.ship.getHeight() / 2.0));
+	}
+
+	/**
+	 * Takes a living ship out of its column without destroying it (a Comet
+	 * starting its dive). It still counts as a remaining enemy.
+	 */
+	private void detach(final EnemyShip ship) {
+		List<EnemyShip> ownColumn = null;
+		for (List<EnemyShip> column : this.enemyShips)
+			if (column.contains(ship))
+				ownColumn = column;
+		if (ownColumn == null)
+			return;
+		ownColumn.remove(ship);
+		int shooterIndex = this.shooters.indexOf(ship);
+		if (shooterIndex >= 0) {
+			EnemyShip nextShooter = getNextShooter(ownColumn);
+			if (nextShooter != null)
+				this.shooters.set(shooterIndex, nextShooter);
+			else
+				this.shooters.remove(shooterIndex);
+		}
+	}
+
+	/**
+	 * @return Centres where diving Comets exploded since the last call
+	 *         (GOG-86). The list is cleared.
+	 */
+	public final List<Point> takeDetonations() {
+		List<Point> taken = new ArrayList<Point>(this.detonations);
+		this.detonations.clear();
+		return taken;
+	}
+
+	/**
+	 * @return Centres where Mites died since the last call (GOG-86). The
+	 *         game sprays shrapnel and hurts the neighbours. The list is
+	 *         cleared.
+	 */
+	public final List<Point> takeMiteBooms() {
+		List<Point> taken = new ArrayList<Point>(this.miteBooms);
+		this.miteBooms.clear();
+		return taken;
+	}
+
+	/** @return True while a Comet is diving (GOG-86). */
+	public final boolean isCometDiving() {
+		for (Dive dive : this.dives)
+			if (!dive.ship.isDestroyed())
+				return true;
+		return false;
 	}
 
 	/**
@@ -452,6 +622,7 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 				bottomRow.add(enemyShip);
 		for (List<EnemyShip> column : this.enemyShips)
 			column.removeAll(bottomRow);
+		this.dives.removeIf(dive -> bottomRow.contains(dive.ship));
 		this.shipCount -= bottomRow.size();
 		return bottomRow;
 	}
@@ -547,6 +718,13 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 			freezeBullet.setFreezing(true);
 			bullets.add(freezeBullet);
 			break;
+		case STINGER:
+			// Vulnerable bullet: leaves the player at 1 life (GOG-86).
+			Bullet vulnerableBullet = BulletPool.getBullet(centerX, y,
+					BULLET_SPEED);
+			vulnerableBullet.setVulnerable(true);
+			bullets.add(vulnerableBullet);
+			break;
 		default:
 			bullets.add(BulletPool.getBullet(centerX, y, BULLET_SPEED));
 			break;
@@ -560,6 +738,23 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 *            Ship to be destroyed.
 	 */
 	public final void destroy(final EnemyShip destroyedShip) {
+		// A Mite that dies booms (GOG-86).
+		if (destroyedShip.getType() == EnemyType.MITE
+				&& !destroyedShip.isDestroyed())
+			this.miteBooms.add(new Point(
+					destroyedShip.getPositionX() + destroyedShip.getWidth() / 2,
+					destroyedShip.getPositionY() + destroyedShip.getHeight() / 2));
+
+		// A diving Comet is no longer in a column (GOG-86).
+		for (Dive dive : this.dives)
+			if (dive.ship == destroyedShip) {
+				if (!destroyedShip.isDestroyed()) {
+					destroyedShip.destroy();
+					this.shipCount--;
+				}
+				return;
+			}
+
 		for (List<EnemyShip> column : this.enemyShips)
 			for (int i = 0; i < column.size(); i++)
 				if (column.get(i).equals(destroyedShip)) {
@@ -625,6 +820,8 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		for (List<EnemyShip> column : this.enemyShips)
 			for (EnemyShip enemyShip : column)
 				enemyShipsList.add(enemyShip);
+		for (Dive dive : this.dives)
+			enemyShipsList.add(dive.ship);
 
 		return enemyShipsList.iterator();
 	}

@@ -79,6 +79,39 @@ public final class StoryMode {
                     EnemyType.BEETLE, EnemyType.BEETLE},
     };
 
+    /**
+     * GOG-86: enemy rows of Act 4 levels 31-39, top (back) to bottom
+     * (front), 7 enemies per row. Same pattern as Act 2: levels 31-33
+     * bring in one special type each, then the types mix and special rows
+     * grow until level 39 is all special. Stinger stays at the back, Comet
+     * at the front (it dives from there), Mite in the middle.
+     */
+    private static final EnemyType[][] ACT4_ROWS = {
+            // 31: Comet arrives
+            {EnemyType.STAR_EATER, EnemyType.COMET},
+            // 32: Mite arrives
+            {EnemyType.STAR_EATER, EnemyType.MITE},
+            // 33: Stinger arrives
+            {EnemyType.STINGER, EnemyType.STAR_EATER, EnemyType.NEBULA_WRAITH},
+            // 34: 2 special rows
+            {EnemyType.STINGER, EnemyType.NEBULA_WRAITH, EnemyType.COMET},
+            // 35: 2 special rows
+            {EnemyType.STAR_EATER, EnemyType.MITE, EnemyType.NEBULA_WRAITH,
+                    EnemyType.COMET},
+            // 36: 3 special rows
+            {EnemyType.STINGER, EnemyType.STAR_EATER, EnemyType.MITE,
+                    EnemyType.COMET},
+            // 37: 4 special rows
+            {EnemyType.STINGER, EnemyType.MITE, EnemyType.MITE,
+                    EnemyType.COMET},
+            // 38: 4 special rows
+            {EnemyType.STINGER, EnemyType.STAR_EATER, EnemyType.MITE,
+                    EnemyType.MITE, EnemyType.COMET},
+            // 39: all special
+            {EnemyType.STINGER, EnemyType.MITE, EnemyType.MITE,
+                    EnemyType.COMET, EnemyType.COMET},
+    };
+
     private static final List<GameSettings> SETTINGS =
             createSettings();
 
@@ -704,8 +737,11 @@ public final class StoryMode {
 
             // GOG-84: Act 2 levels 11-19 use the Game Design Draft row
             // counts and the Jupiter enemies.
-            if (chapter == 2 && stage <= ACT2_ROWS.length) {
-                EnemyType[] rows = ACT2_ROWS[stage - 1];
+            // GOG-86: Act 4 levels 31-39 use the Deep Space enemies.
+            EnemyType[][] actRows = chapter == 2 ? ACT2_ROWS
+                    : chapter == 4 ? ACT4_ROWS : null;
+            if (actRows != null && stage <= actRows.length) {
+                EnemyType[] rows = actRows[stage - 1];
                 settings.add(
                         new GameSettings(
                                 width,

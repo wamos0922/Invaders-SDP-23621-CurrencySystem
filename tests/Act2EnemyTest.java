@@ -140,8 +140,8 @@ public final class Act2EnemyTest {
                 check(types.size() == 1 && types.contains(rows[r++]), "Level " + level + " row order");
         }
         check(previousSpecialRows == 5, "Level 19 is all special");
-        // Other acts keep their old formations until their owners change them.
-        for (int level : new int[] {1, 9, 21, 31}) {
+        // Acts 1 and 3 keep their own formations (Act 4 is GOG-86's test).
+        for (int level : new int[] {1, 9, 21}) {
             for (EnemyShip e : new EnemyShipFormation(StoryMode.getSettings(level)))
                 check(e.getType() == EnemyType.NORMAL, "Level " + level + " stays normal");
         }

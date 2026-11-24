@@ -214,7 +214,22 @@ public final class DrawManager {
 		AIWarship2,
 		/** Repair Drone that heals the AI Warship, two frames, 12 x 8 (GoG, GOG-78). */
 		RepairDrone1,
-		RepairDrone2
+		RepairDrone2,
+		/** Act 4 (Deep Space) Star Eater, no ability (GoG, GOG-86). */
+		StarEater1,
+		StarEater2,
+		/** Act 4 (Deep Space) Comet Rider, kamikaze dive (GoG, GOG-86). */
+		Comet1,
+		Comet2,
+		/** Act 4 (Deep Space) Nebula Wraith, no ability (GoG, GOG-86). */
+		Wraith1,
+		Wraith2,
+		/** Act 4 (Deep Space) Warp Stinger, vulnerable bullet (GoG, GOG-86). */
+		Stinger1,
+		Stinger2,
+		/** Act 4 (Deep Space) Void Mite, boom on death (GoG, GOG-86). */
+		Mite1,
+		Mite2
 	};
 
 	/**
@@ -319,6 +334,18 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.AIWarship2, new boolean[24][16]);
 			spriteMap.put(SpriteType.RepairDrone1, new boolean[12][8]);
 			spriteMap.put(SpriteType.RepairDrone2, new boolean[12][8]);
+
+			// Act 4 Deep Space enemies (GoG, GOG-86)
+			spriteMap.put(SpriteType.StarEater1, new boolean[12][8]);
+			spriteMap.put(SpriteType.StarEater2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Comet1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Comet2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Wraith1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Wraith2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Stinger1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Stinger2, new boolean[12][8]);
+			spriteMap.put(SpriteType.Mite1, new boolean[12][8]);
+			spriteMap.put(SpriteType.Mite2, new boolean[12][8]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");

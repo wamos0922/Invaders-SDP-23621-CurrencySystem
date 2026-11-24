@@ -25,6 +25,8 @@ public class Bullet extends Entity {
 	private int speedX;
 	/** True for a Polar freeze bullet (GoG, GOG-84). */
 	private boolean freezing;
+	/** True for a Stinger vulnerable bullet (GoG, GOG-86). */
+	private boolean vulnerable;
 
 	/**
 	 * Constructor, establishes the bullet's properties.
@@ -127,6 +129,26 @@ public class Bullet extends Entity {
 	 */
 	public final boolean isFreezing() {
 		return this.freezing;
+	}
+
+	/**
+	 * Marks the bullet as a Stinger vulnerable bullet, or back to a normal
+	 * one (GoG, GOG-86). A vulnerable bullet is drawn in violet (#B98AFF).
+	 *
+	 * @param vulnerable
+	 *            True for a vulnerable bullet.
+	 */
+	public final void setVulnerable(final boolean vulnerable) {
+		this.vulnerable = vulnerable;
+		setColor(vulnerable ? EnemyType.VULNERABLE_BULLET_COLOR : Color.WHITE);
+	}
+
+	/**
+	 * @return True if hitting the player leaves them at 1 life for a while
+	 *         instead of taking a life. The player can shoot it down.
+	 */
+	public final boolean isVulnerable() {
+		return this.vulnerable;
 	}
 
 	/**
