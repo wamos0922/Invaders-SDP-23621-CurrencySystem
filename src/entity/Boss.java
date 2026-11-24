@@ -37,6 +37,13 @@ public interface Boss {
     default String getWarningText() { return null; }
 
     /**
+     * Called once, when the level's start countdown ends and play begins
+     * (GoG, GOG-75). Bosses with timers start them here, not in the
+     * constructor, so nothing runs out during the countdown.
+     */
+    default void startFight() { }
+
+    /**
      * Keeps the boss's timers still while the game is paused.
      *
      * @param pausedMilliseconds How long the game was paused.

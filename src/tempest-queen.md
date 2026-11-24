@@ -5,8 +5,10 @@ Jupiter" design system; her numbers come from the Game Design Draft.
 
 ## Fight
 
-1. **Warning:** "WARNING: BOSS INCOMING" blinks in red for 2 seconds. She is
-   hidden and can't be hit.
+1. **Warning:** after the level's 6 s start countdown, "WARNING: BOSS
+   INCOMING" blinks in red for 2 seconds. She is hidden and can't be hit.
+   Her clock starts only when the countdown ends (`Boss.startFight()`, called
+   once by `GameScreen`), so nothing runs out during it.
 2. **Shield closed (4 s):** the Gas Shield outline is drawn around her.
    Player bullets just disappear (in phase 2 each one calls a mob). She shoots one bullet straight down every
    second.
@@ -45,8 +47,8 @@ All numbers are constants at the top of `entity/TempestQueen.java`.
 ## Code
 
 - `entity/TempestQueen.java`: the boss, implements `Boss`.
-- `entity/Boss.java`: three default methods, `getWarningText()`,
-  `resumeAfterPause(long)` and `getMinions()`. Other bosses don't need to
+- `entity/Boss.java`: four default methods, `getWarningText()`,
+  `startFight()`, `resumeAfterPause(long)` and `getMinions()`. Other bosses don't need to
   change.
 - `EnemyShipFormation.fireShot(...)`: one enemy's shot with its ability,
   shared by the formation and her mobs.

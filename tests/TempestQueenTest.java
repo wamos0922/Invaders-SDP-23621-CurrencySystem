@@ -54,8 +54,9 @@ public final class TempestQueenTest {
         return System.currentTimeMillis();
     }
 
-    /** Skips the warning so she has appeared with her shield closed. */
+    /** Starts the fight and skips the warning: she appears, shield closed. */
     private static void skipIntro(TempestQueen boss) throws Exception {
+        boss.startFight();
         long t = now() - 1;
         setLong(boss, "introEndsAt", t);
         setLong(boss, "shieldChangesAt", t + TempestQueen.SHIELD_CLOSED_MILLIS);
@@ -66,6 +67,23 @@ public final class TempestQueenTest {
     private static void flipShield(TempestQueen boss) throws Exception {
         setLong(boss, "shieldChangesAt", now() - 1);
         boss.update();
+    }
+
+    /**
+     * Runs GameScreen.update(). Its game logic runs first; the draw() call
+     * at its end needs a real window, so in a headless test only that draw
+     * is allowed to fail.
+     */
+    private static void runGameLogic(Method update, GameScreen screen) throws Exception {
+        try {
+            update.invoke(screen);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            boolean fromDraw = false;
+            for (StackTraceElement frame : e.getCause().getStackTrace())
+                fromDraw |= frame.getMethodName().equals("draw")
+                        && frame.getClassName().equals("screen.GameScreen");
+            if (!fromDraw) throw e;
+        }
     }
 
     public static void main(String[] args) throws Exception {
@@ -83,10 +101,25 @@ public final class TempestQueenTest {
         check(queen[8][0] && !queen[7][0] && queen[0][6], "Tempest Queen pixels");
         check(gas[9][1] && !gas[0][0] && gas[26][8], "Gas Shield pixels");
 
-        // Warning first: hidden, can't be hurt, doesn't shoot or move.
+        // Level start countdown: her clock doesn't run until startFight().
         TempestQueen boss = new TempestQueen(200, 100);
-        check(boss.isIntro() && !boss.isVisible(), "Hidden during the warning");
-        check(TempestQueen.WARNING_TEXT.equals(boss.getWarningText()), "Warning text");
+        check(!boss.isStarted() && boss.isIntro() && !boss.isVisible(), "Hidden during the countdown");
+        check(boss.getWarningText() == null, "No warning during the countdown");
+        Thread.sleep(TempestQueen.INTRO_MILLIS + 200);
+        boss.update();
+        check(boss.isIntro() && boss.getWarningText() == null && !boss.isVisible(),
+                "Waiting longer than the warning doesn't use it up");
+
+        // Countdown ends: the warning shows for 2 s, she's hidden and harmless.
+        boss.startFight();
+        check(boss.isStarted() && boss.isIntro() && !boss.isVisible(), "Hidden during the warning");
+        check(TempestQueen.WARNING_TEXT.equals(boss.getWarningText()), "Warning text after the countdown");
+        long introEnd = (Long) get(boss, "introEndsAt");
+        check(Math.abs(introEnd - now() - TempestQueen.INTRO_MILLIS) < 50, "Warning lasts 2 s from start");
+        long shieldEnd = (Long) get(boss, "shieldChangesAt");
+        check(shieldEnd - introEnd == TempestQueen.SHIELD_CLOSED_MILLIS, "Shield timer starts after the warning");
+        boss.startFight();
+        check((Long) get(boss, "introEndsAt") == introEnd, "Calling startFight again changes nothing");
         check(boss.manageCollisionsBoss(null) == 0 && boss.getHp() == 15, "No damage during warning");
         check(!boss.shoot(bullets, null) && bullets.isEmpty(), "No shots during warning");
         boss.moveBoss(448, 520, null);
@@ -273,6 +306,26 @@ public final class TempestQueenTest {
                 StoryMode.getSettings(20), false, 448, 520, 60);
         level20.initialize();
         check(get(level20, "midBoss") instanceof TempestQueen, "Level 20 is the Tempest Queen");
+
+        // Reviewer's case: the warning still shows after the 6 s countdown.
+        TempestQueen loaded = (TempestQueen) get(level20, "midBoss");
+        check(!loaded.isStarted(), "Not started while the countdown runs");
+        Field inputDelay = findField(GameScreen.class, "inputDelay");
+        inputDelay.setAccessible(true);
+        engine.Cooldown countdown = (engine.Cooldown) inputDelay.get(level20);
+        check(!countdown.checkFinished(), "Countdown is running");
+        Field startTime = findField(countdown.getClass(), "time");
+        startTime.setAccessible(true);
+        startTime.setLong(countdown, now() - 7000); // as if 7 s passed
+        check(countdown.checkFinished(), "Countdown over");
+        Method update = GameScreen.class.getDeclaredMethod("update");
+        update.setAccessible(true);
+        runGameLogic(update, level20);
+        check(loaded.isStarted(), "First update after the countdown starts her");
+        check(TempestQueen.WARNING_TEXT.equals(loaded.getWarningText()), "Warning shows after the countdown");
+        long firstIntroEnd = (Long) get(loaded, "introEndsAt");
+        runGameLogic(update, level20);
+        check((Long) get(loaded, "introEndsAt") == firstIntroEnd, "Started only once");
         GameScreen level10 = new GameScreen(new GameState(10, 0, 3, 0, 0, 0),
                 StoryMode.getSettings(10), false, 448, 520, 60);
         level10.initialize();

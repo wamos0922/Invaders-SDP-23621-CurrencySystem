@@ -237,6 +237,8 @@ public class GameScreen extends Screen {
 	private long gameStartTime;
 	/** Checks if the level is finished. */
 	private boolean levelFinished;
+	/** True once the boss's clock was started at the end of the countdown (GOG-75). */
+	private boolean bossFightStarted;
 	/** Sparkles from destroyed ships. AUTHORED BY: VFX TEAM (Effection) */
 	private List<Particle> particles = new ArrayList<Particle>();
 	/** Colors the sparkles can have. AUTHORED BY: VFX TEAM (Effection) */
@@ -386,6 +388,7 @@ public class GameScreen extends Screen {
 			else
 				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
 						DrawManager.SpriteType.FinalBoss1);
+			this.bossFightStarted = false;
 		} else {
 			// Act 1 (story levels 1-10) uses the Earth Escape enemies.
 			boolean earthAct = !EndlessMode.isEnabled()
@@ -528,6 +531,13 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
+
+			// The boss's clock starts when the countdown ends, so its
+			// warning and timers don't run out during it (GOG-75).
+			if (this.midBoss != null && !this.bossFightStarted) {
+				this.midBoss.startFight();
+				this.bossFightStarted = true;
+			}
 
 			// A Polar freeze bullet locks moving and shooting (GOG-84);
 			// items can still be used.

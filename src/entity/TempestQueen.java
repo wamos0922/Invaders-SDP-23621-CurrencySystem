@@ -96,6 +96,8 @@ public class TempestQueen extends Entity implements Boss {
 
 	/** Remaining health. */
 	private int hp = MAX_HP;
+	/** True once the level's start countdown has ended (startFight). */
+	private boolean started;
 	/** True once she has been destroyed. */
 	private boolean destroyed;
 	/** True in phase 2 (half health or less). */
@@ -142,8 +144,9 @@ public class TempestQueen extends Entity implements Boss {
 	}
 
 	/**
-	 * Creates the Tempest Queen. She stays hidden behind the warning for
-	 * {@link #INTRO_MILLIS}, then appears with her shield closed.
+	 * Creates the Tempest Queen. She stays hidden until {@link #startFight()}
+	 * (end of the level's start countdown), then shows the warning for
+	 * {@link #INTRO_MILLIS} and appears with her shield closed.
 	 *
 	 * @param positionX
 	 *            Left edge.
@@ -156,6 +159,17 @@ public class TempestQueen extends Entity implements Boss {
 		this.shield = new Entity(positionX - SHIELD_OFFSET,
 				positionY - SHIELD_OFFSET, 28 * 2, 20 * 2, SHIELD_COLOR);
 		this.shield.spriteType = SpriteType.GasShield;
+	}
+
+	/**
+	 * Starts her clock when play begins: the warning shows now, and every
+	 * timer counts from here. Calling it again does nothing.
+	 */
+	@Override
+	public final void startFight() {
+		if (this.started)
+			return;
+		this.started = true;
 		long now = System.currentTimeMillis();
 		this.introEndsAt = now + INTRO_MILLIS;
 		this.shieldChangesAt = this.introEndsAt + SHIELD_CLOSED_MILLIS;
@@ -163,9 +177,17 @@ public class TempestQueen extends Entity implements Boss {
 		this.nextFrameAt = now + ANIMATION_MILLIS;
 	}
 
-	/** @return True while the warning shows and she hasn't appeared yet. */
+	/** @return True once play has begun (the countdown ended). */
+	public final boolean isStarted() {
+		return this.started;
+	}
+
+	/**
+	 * @return True before she appears: during the level's start countdown
+	 *         and while the warning shows.
+	 */
 	public final boolean isIntro() {
-		return System.currentTimeMillis() < this.introEndsAt;
+		return !this.started || System.currentTimeMillis() < this.introEndsAt;
 	}
 
 	/** @return True while the shield is open and she can be hurt. */
@@ -396,10 +418,14 @@ public class TempestQueen extends Entity implements Boss {
 				this.shield.positionY);
 	}
 
-	/** @return The warning text while it should show, otherwise null. */
+	/**
+	 * @return The warning text while it should show (after the countdown,
+	 *         before she appears), otherwise null.
+	 */
 	@Override
 	public final String getWarningText() {
-		return !this.destroyed && isIntro() ? WARNING_TEXT : null;
+		return this.started && !this.destroyed && isIntro() ? WARNING_TEXT
+				: null;
 	}
 
 	/** Keeps every timer still while the game is paused. */
