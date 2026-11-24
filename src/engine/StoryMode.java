@@ -627,7 +627,7 @@ public final class StoryMode {
                         Math.round(7 * 5 * 0.20f)));
 
         // Level 10
-        // First boss level placeholder.
+        // AI Warship boss (GOG-74); the boss has its own numbers.
         settings.add(
                 new GameSettings(5, 4, 8, 500));
 

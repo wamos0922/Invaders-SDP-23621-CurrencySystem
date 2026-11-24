@@ -326,10 +326,11 @@ public final class TempestQueenTest {
         long firstIntroEnd = (Long) get(loaded, "introEndsAt");
         runGameLogic(update, level20);
         check((Long) get(loaded, "introEndsAt") == firstIntroEnd, "Started only once");
-        GameScreen level10 = new GameScreen(new GameState(10, 0, 3, 0, 0, 0),
-                StoryMode.getSettings(10), false, 448, 520, 60);
-        level10.initialize();
-        check(get(level10, "midBoss") instanceof FinalBoss, "Level 10 keeps the placeholder");
+        // Level 10 is now the AI Warship (GOG-74); level 30 keeps the placeholder.
+        GameScreen level30 = new GameScreen(new GameState(30, 0, 3, 0, 0, 0),
+                StoryMode.getSettings(30), false, 448, 520, 60);
+        level30.initialize();
+        check(get(level30, "midBoss") instanceof FinalBoss, "Level 30 keeps the placeholder");
 
         // Collisions through GameScreen: closed shield eats the bullet, no damage.
         TempestQueen inGame = (TempestQueen) get(level20, "midBoss");

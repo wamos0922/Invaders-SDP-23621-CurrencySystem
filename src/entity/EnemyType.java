@@ -40,7 +40,15 @@ public enum EnemyType {
 	 * Act 2, front rows. Shield: absorbs {@link #BEETLE_SHIELD_HITS} hit(s)
 	 * before the beetle can take damage.
 	 */
-	BEETLE(SpriteType.Beetle1, SpriteType.Beetle2, new Color(0xad6a40), 30, 1);
+	BEETLE(SpriteType.Beetle1, SpriteType.Beetle2, new Color(0xad6a40), 30, 1),
+
+	/**
+	 * Level 10 boss helper (GOG-74): the AI Warship calls these at half
+	 * health. They don't shoot; they heal the boss until destroyed. Stays
+	 * earth-land green at any health, as in the design system.
+	 */
+	REPAIR_DRONE(SpriteType.RepairDrone1, SpriteType.RepairDrone2,
+			EnemyShip.EARTH_LAND, 100, 0);
 
 	/** How long a Polar freeze bullet locks the player ship. */
 	public static final int FREEZE_MILLIS = 3000;
@@ -81,6 +89,14 @@ public enum EnemyType {
 	/** @return True if this type has its own sprites (anything but NORMAL). */
 	public boolean hasOwnSprites() {
 		return this != NORMAL;
+	}
+
+	/**
+	 * @return True if a ship of this type turns yellow while it has more
+	 *         than one hit left. Repair Drones keep their design colour.
+	 */
+	public boolean showsExtraHealth() {
+		return this != REPAIR_DRONE;
 	}
 
 	/** @return True if this type has a special ability. */
