@@ -23,6 +23,11 @@ import java.util.Map;
  * - Emotion-based character portraits
  * - Typing sound
  * - SKIP button and ESC shortcut
+ *
+ * Panel 32 special behavior:
+ * - Dialogue lines 1-2: panel32.png
+ * - Dialogue lines 3-7: panel32.5.png
+ * - Afterwards: panel33.png
  */
 public class StoryPanel extends JPanel {
 
@@ -96,6 +101,10 @@ public class StoryPanel extends JPanel {
     private final Timer animationTimer;
 
     private int panelNumber;
+
+    // Tracks the current dialogue line inside each panel.
+    private int dialogueLine;
+
     private DialogueManager dialogueManager;
 
     private int visibleCharacters;
@@ -341,6 +350,9 @@ public class StoryPanel extends JPanel {
 
         panelNumber = number;
 
+        // Every new panel starts with dialogue line 1.
+        dialogueLine = 1;
+
         dialogueManager =
                 new DialogueManager(dialogues);
 
@@ -412,6 +424,56 @@ public class StoryPanel extends JPanel {
         sceneCache.put(number, image);
 
         return image;
+    }
+
+    // =========================================
+    // PANEL 32.5 BACKGROUND TRANSITION
+    // =========================================
+
+    private void loadPanel32GoodbyeBackground() {
+
+        String path =
+                PANEL_FOLDER + "panel32.5.png";
+
+        try {
+
+            File file = new File(path);
+
+            if (file.isFile()) {
+
+                BufferedImage image = ImageIO.read(file);
+
+                if (image != null) {
+
+                    currentSceneImage = image;
+
+                    System.out.println(
+                            "[STORY] Switched background: " + path
+                    );
+
+                } else {
+
+                    System.err.println(
+                            "[STORY] Unsupported background: " + path
+                    );
+                }
+
+            } else {
+
+                System.err.println(
+                        "[STORY] Missing background: " + path
+                );
+            }
+
+        } catch (IOException e) {
+
+            System.err.println(
+                    "[STORY] Failed to load: "
+                            + path
+                            + " - "
+                            + e.getMessage()
+            );
+        }
     }
 
     // =========================================
@@ -509,7 +571,35 @@ public class StoryPanel extends JPanel {
         // Move to next dialogue.
         dialogueManager.advanceDialogue();
 
+        // Track current dialogue line.
+        dialogueLine++;
+
         if (!dialogueManager.isFinished()) {
+
+            // =====================================
+            // SPECIAL PANEL 32 TRANSITION
+            // =====================================
+            //
+            // Dialogue 1:
+            // Another soldier quickly fired...
+            //
+            // Dialogue 2:
+            // But none of us cared about that anymore.
+            //
+            // Dialogue 3:
+            // We gathered around Blorp...
+            //
+            // After the second dialogue is finished,
+            // switch to panel32.5.png.
+            //
+            // The background remains panel32.5.png
+            // for dialogue lines 3-7.
+
+            if (panelNumber == 32 && dialogueLine == 3) {
+
+                loadPanel32GoodbyeBackground();
+            }
+
             startTyping();
             return;
         }
@@ -1044,8 +1134,8 @@ public class StoryPanel extends JPanel {
 
                 StoryPanel panel =
                         new StoryPanel(
-                                18,
-                                18,
+                                1,
+                                33,
                                 window::dispose
                         );
 
