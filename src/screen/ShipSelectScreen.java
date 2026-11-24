@@ -294,13 +294,18 @@ public class ShipSelectScreen extends Screen {
 		this.shapeIndex = worn == null ? 0
 				: browsableShapes().indexOf(worn) + 1;
 	}
+	
 	/**
-	 * Opens the page of the selected MENU button (GOG-50).
+	 * Opens the page of the selected MENU button. The skill tree opens on
+	 * the ship shown in the Ship row (GOG-51).
 	 */
 	private void openMenuButton() {
-		if (this.menuButton == 0)
-			return; // The skill tree page comes with GOG-51.
-		this.returnCode = ItemsScreen.CODE;
+		if (this.menuButton == 0) {
+			SkillTreeScreen.openOn(this.availableShips[this.shipIndex]);
+			this.returnCode = SkillTreeScreen.CODE;
+		} else {
+			this.returnCode = ItemsScreen.CODE;
+		}
 		this.isRunning = false;
 	}
 	/**
@@ -784,11 +789,14 @@ public class ShipSelectScreen extends Screen {
 			status = effect.getName() + (on
 					? " is on - space to switch off"
 										: " is off - space to switch on");
-			color = on ? Color.GREEN : Color.GRAY;
+		color = on ? Color.GREEN : Color.GRAY;
 		} else if (this.row == Row.MENU) {
-			status = this.menuButton == 0 ? "Skill tree coming soon"
+			status = this.menuButton == 0
+					? "Space to open the " + ShopCatalog.shipName(
+							this.availableShips[this.shipIndex])
+							+ " skill tree"
 					: "Space to equip items for Endless and Story";
-			color = this.menuButton == 0 ? Color.GRAY : Color.GREEN;
+			color = Color.GREEN;
 		} else if (isUnlocked(this.row)) {
 			status = this.row == Row.EFFECT ? "No effects in the shop yet"
 					: choiceName(this.row) + " is equipped";
