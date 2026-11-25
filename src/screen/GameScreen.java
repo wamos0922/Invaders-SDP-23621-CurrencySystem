@@ -20,6 +20,7 @@ import engine.Cooldown;
 import engine.Core;
 import engine.DrawManager;
 import engine.CurrencyManager;
+import engine.DailyChallenge;
 import engine.EndlessMode;
 import engine.GameSettings;
 import engine.GameState;
@@ -707,12 +708,15 @@ public class GameScreen extends Screen {
 				}
 				showUnlockedAchievements(Core.getAchievementManager()
 						.recordFlawlessLevelCompleted(this.tookDamage));
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(this.level));
+				// Story progress achievements do not count in challenges,
+				// which jump straight to later story levels (GOG-102).
+				if (!DailyChallenge.isRunning())
+					showUnlockedAchievement(Core.getAchievementManager()
+							.recordLevelCompleted(this.level));
                 showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
 
 				// Level 10 / game won only count in story mode (GOG-7).
-				if (!EndlessMode.isEnabled())
+				if (!EndlessMode.isEnabled() && !DailyChallenge.isRunning())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordLevelCompleted(
 									this.level,
@@ -720,7 +724,7 @@ public class GameScreen extends Screen {
 									true));
 
 				// Last level cleared alive: the game is beaten.
-				if (!EndlessMode.isEnabled()
+				if (!EndlessMode.isEnabled() && !DailyChallenge.isRunning()
 						&& this.level == Core.getNumLevels())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordGameWon(Core.getSelectedShipId()));
