@@ -141,10 +141,14 @@ public final class Act2EnemyTest {
         }
         check(previousSpecialRows == 5, "Level 19 is all special");
         // Acts 1 and 3 keep their own formations (Act 4 is GOG-86's test).
-        for (int level : new int[] {1, 9, 21}) {
+        for (int level : new int[] {1, 9}) {
             for (EnemyShip e : new EnemyShipFormation(StoryMode.getSettings(level)))
                 check(e.getType() == EnemyType.NORMAL, "Level " + level + " stays normal");
         }
+        // Act 3 has its own Saturn enemies now (GOG-28), none from Act 2.
+        for (EnemyShip e : new EnemyShipFormation(StoryMode.getSettings(21)))
+            check(e.getType() == EnemyType.RING_COMMANDER
+                    || e.getType() == EnemyType.MOONLET_POD, "Level 21 uses Act 3 enemies");
         try {
             new GameSettings(5, 2, 30, 1600).withRowTypes(P);
             check(false, "Row types must match the row count");

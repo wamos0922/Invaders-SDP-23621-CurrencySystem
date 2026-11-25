@@ -229,7 +229,22 @@ public final class DrawManager {
 		Stinger2,
 		/** Act 4 (Deep Space) Void Mite, boom on death (GoG, GOG-86). */
 		Mite1,
-		Mite2
+		Mite2,
+		/** Act 3 (Saturn) row 1, Ring Commander, two frames (GoG, GOG-28). */
+		RingCommander1,
+		RingCommander2,
+		/** Act 3 (Saturn) row 2, Halo Lancer, two frames (GoG, GOG-28). */
+		HaloLancer1,
+		HaloLancer2,
+		/** Act 3 (Saturn) row 3, Hex Sentinel, two frames (GoG, GOG-28). */
+		HexSentinel1,
+		HexSentinel2,
+		/** Act 3 (Saturn) row 4, Orbit Fighter, two frames (GoG, GOG-28). */
+		OrbitFighter1,
+		OrbitFighter2,
+		/** Act 3 (Saturn) row 5, Moonlet Pod, two frames (GoG, GOG-28). */
+		MoonletPod1,
+		MoonletPod2
 	};
 
 	/**
@@ -346,6 +361,18 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.Stinger2, new boolean[12][8]);
 			spriteMap.put(SpriteType.Mite1, new boolean[12][8]);
 			spriteMap.put(SpriteType.Mite2, new boolean[12][8]);
+
+			// Act 3 Saturn enemies (GoG, GOG-28)
+			spriteMap.put(SpriteType.RingCommander1, new boolean[12][8]);
+			spriteMap.put(SpriteType.RingCommander2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HaloLancer1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HaloLancer2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HexSentinel1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HexSentinel2, new boolean[12][8]);
+			spriteMap.put(SpriteType.OrbitFighter1, new boolean[12][8]);
+			spriteMap.put(SpriteType.OrbitFighter2, new boolean[12][8]);
+			spriteMap.put(SpriteType.MoonletPod1, new boolean[12][8]);
+			spriteMap.put(SpriteType.MoonletPod2, new boolean[12][8]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
