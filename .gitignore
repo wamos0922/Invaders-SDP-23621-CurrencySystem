@@ -213,3 +213,14 @@ stamina.properties
 # Story level-completion rewards already claimed (GOG-38)
 /level-rewards
 /level-rewards.tmp
+
+# Skill tree saves, written at runtime (GOG-10, GOG-88) and item loadout (GOG-50)
+/shards
+/shards.tmp
+/skill-tree
+/skill-tree.tmp
+/item-loadout
+/item-loadout.tmp
+
+# Compiled tests
+/test-bin/
