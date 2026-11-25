@@ -11,6 +11,7 @@ import skilltree.NodeState;
 import skilltree.ShardType;
 import skilltree.SkillBranch;
 import skilltree.SkillNode;
+import skilltree.SkillTreeCatalog;
 import skilltree.SkillTreePlaceholder;
 
 /**
@@ -247,7 +248,7 @@ public class SkillTreeScreen extends Screen {
 	}
 
 	private List<SkillNode> nodes(final SkillBranch branch) {
-		return SkillTreePlaceholder.nodes(ship(), branch);
+		return SkillTreeCatalog.nodes(ship(), branch);
 	}
 
 	private SkillNode selected() {
