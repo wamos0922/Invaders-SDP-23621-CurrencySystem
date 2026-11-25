@@ -4,6 +4,7 @@ package screen;
 public enum MenuItem {
 	MAIN_STORY("Story",2,true),
 	ENDLESS("Endless game",8,true),
+	CHALLENGES("Challenges",ChallengeMenuScreen.CODE,true), // GOG-102
 	SHIP_SELECT("Customize",7,true),
 	SHOP("Shop",5,true),
 	ACHIEVEMENTS("Achievements",6,true),
