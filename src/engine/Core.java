@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.ConsoleHandler;
@@ -19,6 +21,7 @@ import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import engine.soundEngine.SoundManager;
 import entity.Ship;
 import item.ItemSystem;
 import screen.*;
@@ -490,6 +493,11 @@ public final class Core {
 					returnCode = frame.setScreen(currentScreen);
 					break;
 
+				case ChallengeMenuScreen.CODE:
+					// Challenges menu and the daily challenge (GOG-102).
+					returnCode = runChallenges(width, height);
+					break;
+
 				case ItemsScreen.CODE:
 					// Items page, opened from Customize (GOG-50).
 					currentScreen =
@@ -845,6 +853,70 @@ public final class Core {
 				reward);
 
 		frame.setScreen(currentScreen);
+	}
+
+	/**
+	 * Shows the challenges menu and, if the player picks it, plays today's
+	 * daily challenge and its results screen (GOG-102). Uses no stamina
+	 * and never touches story saves or story rewards.
+	 *
+	 * @param width
+	 *            Screen width.
+	 * @param height
+	 *            Screen height.
+	 * @return Next screen code: the challenges menu again after a run, or
+	 *         the title screen.
+	 */
+	private static int runChallenges(final int width, final int height) {
+		currentScreen = new ChallengeMenuScreen(width, height, FPS);
+		if (frame.setScreen(currentScreen) != ChallengeMenuScreen.PLAY_DAILY)
+			return 1;
+
+		SoundManager.getInstance().stopBgm();
+		EndlessMode.setEnabled(false);
+		ItemSystem.setRunEquipment(ItemLoadout.getInstance()
+				.getEquipped(ItemLoadout.Mode.STORY));
+
+		LocalDate day = LocalDate.now();
+		List<DailyChallenge.Stage> stages = DailyChallenge.stagesFor(day);
+		LOGGER.info("Starting daily challenge for " + day);
+
+		GameState state = new GameState(stages.get(0).getLevel(), 0,
+				MAX_LIVES, 0, 0, 0);
+		int stagesCleared = 0;
+		DailyChallenge.setRunning(true);
+		try {
+			for (DailyChallenge.Stage stage : stages) {
+				// Challenges pay shards, not story diamonds: pending
+				// diamonds are dropped between stages.
+				state = new GameState(stage.getLevel(), state.getScore(),
+						state.getLivesRemaining(), state.getBulletsShot(),
+						state.getShipsDestroyed(), 0,
+						state.getLevelsCompletedRun(),
+						state.getCoinsCollected());
+				currentScreen = new GameScreen(state,
+						StoryMode.getSettings(stage.getLevel()), false,
+						width, height, FPS);
+				frame.setScreen(currentScreen);
+				state = ((GameScreen) currentScreen).getGameState();
+				if (state.getLivesRemaining() <= 0)
+					break;
+				stagesCleared++;
+			}
+		} finally {
+			DailyChallenge.setRunning(false);
+		}
+
+		boolean cleared = stagesCleared == stages.size();
+		String reward = cleared ? DailyChallenge.payReward(day) : null;
+		LOGGER.info("Daily challenge " + (cleared ? "cleared" : "failed")
+				+ ": " + stagesCleared + "/" + stages.size() + " stages.");
+
+		currentScreen = new ChallengeResultScreen(width, height, FPS,
+				cleared, stagesCleared, stages.size(), state.getScore(),
+				reward);
+		frame.setScreen(currentScreen);
+		return ChallengeMenuScreen.CODE;
 	}
 
 	/**
