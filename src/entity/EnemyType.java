@@ -9,8 +9,9 @@ import engine.DrawManager.SpriteType;
  *
  * NORMAL keeps the original A/B/C ships, chosen by row. Every other type has
  * its own two animation frames, colour (from the act's design system) and
- * point value; Polar, Jelly, Beetle (Act 2) and Comet, Mite, Stinger
- * (Act 4) also have an ability. Which type goes
+ * point value; Polar, Jelly, Beetle (Act 2), Halo Lancer, Orbit Fighter,
+ * Hex Sentinel (Act 3) and Comet, Mite, Stinger (Act 4) also have an
+ * ability. Which type goes
  * in which row is set per level with
  * {@link engine.GameSettings#withRowTypes(EnemyType...)}. Acts 3 and 4
  * (GOG-85, GOG-86) add their types here.
@@ -62,17 +63,30 @@ public enum EnemyType {
 	MOONLET_POD(SpriteType.MoonletPod1, SpriteType.MoonletPod2,
 			new Color(0x9a7564), 40, 0),
 
-	/** Act 3 (Saturn), row 3: elite strike ship. No ability (saturn-gold). */
+	/**
+	 * Act 3 (Saturn), row 3: elite strike ship (saturn-gold). Sniper: its
+	 * shot is fast and aimed straight at the player, with no warning
+	 * (GOG-85).
+	 */
 	HALO_LANCER(SpriteType.HaloLancer1, SpriteType.HaloLancer2,
 			new Color(0xe8c867), 30, 0),
 
-	/** Act 3 (Saturn), row 4: twin-pod fighter. No ability (saturn-butterscotch). */
+	/**
+	 * Act 3 (Saturn), row 4: twin-pod fighter (saturn-butterscotch). Drop:
+	 * the first hit doesn't kill it; it leaves the formation and falls
+	 * straight down. Touching the player costs a life. A second hit kills
+	 * it while it falls (GOG-85).
+	 */
 	ORBIT_FIGHTER(SpriteType.OrbitFighter1, SpriteType.OrbitFighter2,
 			new Color(0xd0913f), 20, 0),
 
-	/** Act 3 (Saturn), row 5: hexagon patrol drone, weakest. No ability (saturn-hexagon). */
+	/**
+	 * Act 3 (Saturn), row 5: hexagon patrol drone, weakest (saturn-hexagon).
+	 * Reflecting shield: the first hit breaks its shield and the bullet
+	 * comes back down at the player. The next hit kills it (GOG-85).
+	 */
 	HEX_SENTINEL(SpriteType.HexSentinel1, SpriteType.HexSentinel2,
-			new Color(0x6fb3ae), 10, 0),
+			new Color(0x6fb3ae), 10, 1),
 
 	/** Act 4 enemy with no ability (space-starlight). */
 	STAR_EATER(SpriteType.StarEater1, SpriteType.StarEater2,
@@ -142,6 +156,15 @@ public enum EnemyType {
 	public static final int VULNERABLE_MILLIS = 5000;
 	/** Colour of a Stinger's vulnerable bullet (space-galaxy). */
 	public static final Color VULNERABLE_BULLET_COLOR = new Color(0xb98aff);
+	/** Orbit Fighter falling speed, in pixels per frame (GOG-85). */
+	public static final int FIGHTER_DROP_SPEED = 3;
+	/**
+	 * Halo Lancer sniper bullet speed, in pixels per frame: twice a normal
+	 * enemy bullet (4), aimed at the player (GOG-85).
+	 */
+	public static final int SNIPER_BULLET_SPEED = 8;
+	/** Speed of a bullet a Hex Sentinel's shield sends back (GOG-85). */
+	public static final int REFLECT_BULLET_SPEED = 4;
 
 	/** First animation frame, null for NORMAL. */
 	private final SpriteType frameA;
@@ -179,7 +202,9 @@ public enum EnemyType {
 	/** @return True if this type has a special ability. */
 	public boolean hasAbility() {
 		return this == POLAR || this == JELLY || this == BEETLE
-				|| this == COMET || this == MITE || this == STINGER;
+				|| this == COMET || this == MITE || this == STINGER
+				|| this == HALO_LANCER || this == ORBIT_FIGHTER
+				|| this == HEX_SENTINEL;
 	}
 
 	/** @return First animation frame, null for NORMAL. */

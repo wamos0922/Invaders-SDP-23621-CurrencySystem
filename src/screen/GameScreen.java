@@ -638,6 +638,10 @@ public class GameScreen extends Screen {
 					this.enemyShipFormation.update();
 					this.enemyShipFormation.updateDives(); // Comet kamikaze (GOG-86)
 				}
+				// Halo Lancer snipers aim at the player (GOG-85).
+				this.enemyShipFormation.setTarget(
+						this.ship.getPositionX() + this.ship.getWidth() / 2,
+						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.enemyShipFormation.shoot(this.bullets);
 				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
@@ -651,6 +655,7 @@ public class GameScreen extends Screen {
 				&& !this.ship.isDestroyed());
 		manageCollisions();
 		handleCometBlasts(); // GOG-86
+		handleFighterDrops(); // GOG-85
 		handleMiteBooms(); // GOG-86
 		updateVulnerable(); // GOG-86
 		manageFreeRoamCrashes();
@@ -1269,6 +1274,9 @@ public class GameScreen extends Screen {
 	 */
 	private void manageCollisions() {
 		Set<Bullet> recyclable = new HashSet<Bullet>();
+		// Bullets Hex Sentinel shields send back (GOG-85); added after the
+		// loop so the bullet set isn't changed while it is being read.
+		Set<Bullet> reflected = new HashSet<Bullet>();
 		for (Bullet bullet : this.bullets) {
 			if (bullet.getSpeed() > 0) {
 				if (checkCollision(bullet, this.ship) && !this.levelFinished
@@ -1332,8 +1340,15 @@ public class GameScreen extends Screen {
 								continue;
 							}
 							// Surviving hits consume the bullet without awarding kill rewards.
+							boolean shielded = enemyShip.getShield() > 0;
 							if (!enemyShip.takeDamage(1)) {
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
+								// Hex Sentinel: its shield sends the bullet
+								// back at the player (GOG-85).
+								if (shielded && enemyShip.getType()
+										== EnemyType.HEX_SENTINEL)
+									this.enemyShipFormation.reflectShot(bullet,
+											reflected);
 								continue;
 							}
 							this.score += this.items.scoreFor(enemyShip.getPointValue());
@@ -1387,6 +1402,7 @@ public class GameScreen extends Screen {
 		}
 		this.bullets.removeAll(recyclable);
 		BulletPool.recycle(recyclable);
+		this.bullets.addAll(reflected);
 	}
 
 	/**
@@ -1485,6 +1501,32 @@ public class GameScreen extends Screen {
 			this.tookDamage = true;
 			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
 			this.logger.info("Caught in a Comet blast, " + this.lives
+					+ " lives remaining.");
+		}
+	}
+
+	/**
+	 * A falling Orbit Fighter crashed into the player (GOG-85): the player
+	 * loses a life for each one; a shield blocks it.
+	 */
+	private void handleFighterDrops() {
+		if (this.enemyShipFormation == null || this.levelFinished
+				|| this.ship.isDestroyed() || this.lives <= 0)
+			return;
+		int crashes = this.enemyShipFormation.takeDropHits(this.ship);
+		for (int i = 0; i < crashes && this.lives > 0
+				&& !this.ship.isDestroyed(); i++) {
+			this.screenShake.trigger();
+			if (this.items.tryBlockHit()) { // Shield item (Team CS)
+				this.logger.info("Orbit Fighter crash blocked by shield.");
+				continue;
+			}
+			this.ship.destroy();
+			this.lives--;
+			PlayerSounds.playHit(this.lives);
+			this.tookDamage = true;
+			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+			this.logger.info("Hit by a falling Orbit Fighter, " + this.lives
 					+ " lives remaining.");
 		}
 	}
