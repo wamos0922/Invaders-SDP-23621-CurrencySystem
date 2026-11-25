@@ -4,7 +4,9 @@ import java.awt.Color;
 
 import engine.DrawManager;
 import skilltree.ShardType;
-import skilltree.SkillTreePlaceholder;
+import skilltree.ShardWallet;
+
+/**
 
 /**
  * Draws shard pictures and the shard bar (icon + count for each rarity)
@@ -94,11 +96,11 @@ final class ShardBar {
 	}
 
 	/**
-	 * @param type
+		 * @param type
 	 *            Shard type.
-	 * @return How many the player has (placeholder until GOG-88).
+	 * @return How many the player has (GOG-10 wallet).
 	 */
 	static int count(final ShardType type) {
-		return SkillTreePlaceholder.shards(type);
+		return ShardWallet.getInstance().get(type);
 	}
 }
