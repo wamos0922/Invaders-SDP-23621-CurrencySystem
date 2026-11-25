@@ -51,6 +51,29 @@ public enum EnemyType {
 	REPAIR_DRONE(SpriteType.RepairDrone1, SpriteType.RepairDrone2,
 			EnemyShip.EARTH_LAND, 100, 0),
 
+	/**
+	 * Act 3 (Saturn), row 1: flagship of the allied fleet. No ability, it
+	 * only shoots (saturn-ring-ice, GOG-28).
+	 */
+	RING_COMMANDER(SpriteType.RingCommander1, SpriteType.RingCommander2,
+			new Color(0xece6d2), 50, 0),
+
+	/** Act 3 (Saturn), row 2: soldier pod. No ability (saturn-moon). */
+	MOONLET_POD(SpriteType.MoonletPod1, SpriteType.MoonletPod2,
+			new Color(0x9a7564), 40, 0),
+
+	/** Act 3 (Saturn), row 3: elite strike ship. No ability (saturn-gold). */
+	HALO_LANCER(SpriteType.HaloLancer1, SpriteType.HaloLancer2,
+			new Color(0xe8c867), 30, 0),
+
+	/** Act 3 (Saturn), row 4: twin-pod fighter. No ability (saturn-butterscotch). */
+	ORBIT_FIGHTER(SpriteType.OrbitFighter1, SpriteType.OrbitFighter2,
+			new Color(0xd0913f), 20, 0),
+
+	/** Act 3 (Saturn), row 5: hexagon patrol drone, weakest. No ability (saturn-hexagon). */
+	HEX_SENTINEL(SpriteType.HexSentinel1, SpriteType.HexSentinel2,
+			new Color(0x6fb3ae), 10, 0),
+
 	/** Act 4 enemy with no ability (space-starlight). */
 	STAR_EATER(SpriteType.StarEater1, SpriteType.StarEater2,
 			new Color(0xf7f2ff), 20, 0),

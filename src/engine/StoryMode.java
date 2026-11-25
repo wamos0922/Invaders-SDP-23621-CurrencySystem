@@ -6,6 +6,7 @@ import java.awt.Container;
 import java.awt.LayoutManager;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -78,6 +79,33 @@ public final class StoryMode {
             {EnemyType.POLAR, EnemyType.JELLY, EnemyType.JELLY,
                     EnemyType.BEETLE, EnemyType.BEETLE},
     };
+
+    /**
+     * GOG-28: Act 3 (Saturn) enemies from the top (back) row down, like
+     * Act 1: a level with N rows uses the first N. Ring Commander leads,
+     * then Moonlet Pod, Halo Lancer, Orbit Fighter and Hex Sentinel.
+     * None of them has an ability; they only shoot.
+     */
+    private static final EnemyType[] ACT3_ORDER = {
+            EnemyType.RING_COMMANDER, EnemyType.MOONLET_POD,
+            EnemyType.HALO_LANCER, EnemyType.ORBIT_FIGHTER,
+            EnemyType.HEX_SENTINEL};
+
+    /**
+     * GOG-28: enemy rows of Act 3 levels 21-29, top (back) to bottom
+     * (front). Row counts follow the Game Design Draft (2, 2, 3, 3, 4, 4,
+     * 4, 5, 5).
+     */
+    private static final EnemyType[][] ACT3_ROWS = act3Rows();
+
+    /** @return Act 3 rows: the first N of ACT3_ORDER for an N-row level. */
+    private static EnemyType[][] act3Rows() {
+        EnemyType[][] rows = new EnemyType[9][];
+        for (int stage = 1; stage <= rows.length; stage++)
+            rows[stage - 1] = Arrays.copyOf(ACT3_ORDER,
+                    ROWS_PER_STAGE[stage - 1]);
+        return rows;
+    }
 
     /**
      * GOG-86: enemy rows of Act 4 levels 31-39, top (back) to bottom
@@ -737,8 +765,10 @@ public final class StoryMode {
 
             // GOG-84: Act 2 levels 11-19 use the Game Design Draft row
             // counts and the Jupiter enemies.
+            // GOG-28: Act 3 levels 21-29 use the Saturn enemies.
             // GOG-86: Act 4 levels 31-39 use the Deep Space enemies.
             EnemyType[][] actRows = chapter == 2 ? ACT2_ROWS
+                    : chapter == 3 ? ACT3_ROWS
                     : chapter == 4 ? ACT4_ROWS : null;
             if (actRows != null && stage <= actRows.length) {
                 EnemyType[] rows = actRows[stage - 1];
