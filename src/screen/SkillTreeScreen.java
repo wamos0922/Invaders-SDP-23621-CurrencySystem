@@ -12,7 +12,9 @@ import skilltree.ShardType;
 import skilltree.SkillBranch;
 import skilltree.SkillNode;
 import skilltree.SkillTreeCatalog;
-import skilltree.SkillTreePlaceholder;
+import skilltree.SkillTreeProgress;
+
+/**
 
 /**
  * Skill tree page of one ship (GOG-51), opened from Customize.
@@ -21,8 +23,8 @@ import skilltree.SkillTreePlaceholder;
  * explained at the bottom. Left / right arrows switch ship; W A S D move
  * between nodes. C (or the CONVERT button) opens the shard converter.
  *
- * Uses {@link SkillTreePlaceholder} until the real logic (GOG-88) exists:
- * unlocking only shows a message for now.
+ * Space (or clicking the selected node) unlocks it with shards
+ * ({@link SkillTreeProgress}, GOG-88).
  *
  * @author GoG - Progression (GOG-70)
  */
@@ -223,25 +225,34 @@ public class SkillTreeScreen extends Screen {
 		this.message = null;
 	}
 
-	/** Placeholder until GOG-88: explains what would happen. */
+	/** Buys the selected node with shards, and says what happened. */
 	private void tryUnlock() {
-		switch (state(selected())) {
-			case OWNED:
+		SkillNode node = selected();
+		switch (SkillTreeProgress.getInstance().unlock(ship(), node)) {
+			case OK:
+				this.message = node.getName() + " unlocked";
+				this.messageColor = Color.GREEN;
+				break;
+			case ALREADY_OWNED:
 				this.message = "Already unlocked";
 				this.messageColor = Color.GREEN;
 				break;
 			case LOCKED:
 				this.message = "Unlock the node above first";
-				this.messageColor = DIM;
+								this.messageColor = DIM;
+				break;
+			case NOT_ENOUGH_SHARDS:
+				this.message = "Not enough shards";
+				this.messageColor = RED;
 				break;
 			default:
-				this.message = "Unlocking comes with GOG-88";
-				this.messageColor = DIM;
+				this.message = "Couldn't save - try again";
+				this.messageColor = RED;
 				break;
 		}
 	}
 
-	// --- Data (placeholder until GOG-88) ---
+	// --- Data ---
 
 	private ShipType ship() {
 		return this.ships[this.shipIndex];
@@ -255,17 +266,13 @@ public class SkillTreeScreen extends Screen {
 		return nodes(this.column).get(this.nodeIndex);
 	}
 
+	
 	private NodeState state(final SkillNode node) {
-		return SkillTreePlaceholder.state(ship(), node);
+		return SkillTreeProgress.getInstance().state(ship(), node);
 	}
 
 	private int unlockedCount() {
-		int count = 0;
-		for (SkillBranch branch : SkillBranch.values())
-			for (SkillNode node : nodes(branch))
-				if (state(node) == NodeState.OWNED)
-					count++;
-		return count;
+		return SkillTreeProgress.getInstance().ownedCount(ship());
 	}
 
 	/**
