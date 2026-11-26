@@ -13,75 +13,155 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * GOG-35: Music for Story Mode cutscenes only.
+ * GOG-35: Story Mode cutscene and gameplay music.
  *
- * WAV files are streamed on a daemon thread, not loaded as huge Clips.
- * A cue shared by consecutive panels continues at the same playback position.
- * When a cue ends, it loops from its configured beginning (e.g. 0:53).
- * Panel 27 is the sole exception to the cutscene-only rule: its soundtrack
- * stays alive through Level 40, and stops when that battle ends.
+ * WAVs are streamed on a daemon thread rather than loaded as huge Clips.
+ * Identical consecutive cues do not restart. On EOF, each track loops
+ * from its configured start time.
+ *
+ * Story gameplay tracks:
+ *   Levels 1-9:   FirstPhase.wav
+ *   Levels 11-19: SecondPhase.wav
+ *   Levels 21-29: ThirdPhase.wav
+ *   Levels 31-35: FourthPhase.wav
+ * Levels 36-39 continue backup.wav at 0:53 from Panel 26.
+ * Boss Level 40 continues finalBoss.wav from Panel 27.
+ * Boss levels 10, 20 and 30 each have their own looping soundtrack.
  */
 public final class StoryMusic {
     private static Playback active;
 
     private StoryMusic() { }
 
-    public static void playForPanel(int panel, int dialogueLine) {
+    /**
+     * Choose the gameplay soundtrack without starting audio.
+     * Package-independent and testable without a sound device.
+     *
+     * @return The WAV filename, or null if the level is unsupported.
+     */
+    public static String trackForLevel(int level) {
+        if (level >= 1 && level <= 9) {
+            return "FirstPhase.wav";
+        }
+        if (level == 10) {
+            return "Boss10.wav";
+        }
+        if (level >= 11 && level <= 19) {
+            return "SecondPhase.wav";
+        }
+        if (level == 20) {
+            return "Boss20.wav";
+        }
+        if (level >= 21 && level <= 29) {
+            return "ThirdPhase.wav";
+        }
+        if (level == 30) {
+            return "Boss30.wav";
+        }
+        if (level >= 31 && level <= 35) {
+            return "FourthPhase.wav";
+        }
+        if (level >= 36 && level <= 39) {
+            return "backup.wav";
+        }
+        if (level == 40) {
+            return "finalBoss.wav";
+        }
+        return null;
+    }
+
+    /** Select a cutscene soundtrack without starting audio. */
+    public static String trackForPanel(int panel, int dialogueLine) {
         switch (panel) {
             case 1: case 2: case 3: case 4: case 5:
             case 12:
-                play("base.wav", 0);
-                break;
+                return "base.wav";
             case 6:
-                stop();
-                break;
+                return null;
             case 7:
-                play("discovery.wav", 0);
-                break;
+                return "discovery.wav";
             case 8: case 17: case 19: case 20:
-                play("cornered.wav", 0);
-                break;
+                return "cornered.wav";
             case 9:
-                play("panel9.wav", 0);
-                break;
+                return "panel9.wav";
             case 10: case 11:
-                play("Blorp.wav", 0);
-                break;
+                return "Blorp.wav";
             case 13:
                 // panel.13.3: "Suddenly, a massive alarm began..."
-                play(dialogueLine >= 3 ? "alarm.wav" : "base.wav", 0);
-                break;
+                return dialogueLine >= 3 ? "alarm.wav" : "base.wav";
             case 14: case 15: case 16:
-                play("escaped.wav", 0);
-                break;
+                return "escaped.wav";
             case 18:
-                play("fast.wav", 0);
-                break;
+                return "fast.wav";
             case 21: case 22: case 23: case 26:
-                play("backup.wav", 53);
-                break;
+                return "backup.wav";
             case 24: case 25:
-                play("storytime.wav", 0);
-                break;
+                return "storytime.wav";
             case 27:
-                // Exact filename in the repository uses capital B.
-                play("finalBoss.wav", 0);
-                break;
+                // Exact filename uses capital B.
+                return "finalBoss.wav";
             case 28:
-                play("celebration.wav", 0);
-                break;
+                return "celebration.wav";
             case 29: case 30: case 31:
-                play("lastpush.wav", 0);
-                break;
+                return "lastpush.wav";
             case 32: case 33:
-                play("ending.wav", 71);
-                break;
+                return "ending.wav";
             default:
-                stop();
+                return null;
         }
     }
 
-    /** Start only if this is a new cue; do not restart across adjacent panels. */
+    /** Shared starting offset for both gameplay and cutscene cues. */
+    private static int startSecondsForTrack(String filename) {
+        if ("backup.wav".equals(filename)) {
+            return 53;
+        }
+        if ("ending.wav".equals(filename)) {
+            return 71;
+        }
+        return 0;
+    }
+
+    /** Starting offset (seconds) for the selected gameplay cue. */
+    public static int startSecondsForLevel(int level) {
+        return startSecondsForTrack(trackForLevel(level));
+    }
+
+    /** Starting offset (seconds) for the selected cutscene cue. */
+    public static int startSecondsForPanel(int panel, int dialogueLine) {
+        return startSecondsForTrack(trackForPanel(panel, dialogueLine));
+    }
+
+    /**
+     * Keep Panel 26 music across normal, successful Story Mode clears of
+     * Levels 36-39 only. TitleScreen stops it if the player chooses Exit.
+     */
+    public static boolean shouldContinueAfterLevel(int level, boolean storyMode,
+                                                   boolean clearedNormally) {
+        return storyMode && clearedNormally && level >= 36 && level <= 39;
+    }
+
+    /**
+     * Called when entering (or restarting) a Story Mode gameplay level.
+     * This method is NOT used by Endless Mode or Daily Challenges.
+     */
+    public static void playForLevel(int level) {
+        playCue(trackForLevel(level));
+    }
+
+    public static void playForPanel(int panel, int dialogueLine) {
+        playCue(trackForPanel(panel, dialogueLine));
+    }
+
+    private static void playCue(String track) {
+        if (track == null) {
+            stop();
+        } else {
+            play(track, startSecondsForTrack(track));
+        }
+    }
+
+    /** Start only if this is a new cue; do not restart identical cues. */
     private static synchronized void play(String filename, int beginningSeconds) {
         if (active != null && active.running
                 && active.filename.equals(filename)
@@ -99,7 +179,7 @@ public final class StoryMusic {
         thread.start();
     }
 
-    /** Called on every normal cutscene exit and on Level 40 clear/game over. */
+    /** Stop on gameplay exit, game over, or when switching to other music. */
     public static synchronized void stop() {
         Playback previous = active;
         active = null;
@@ -144,8 +224,7 @@ public final class StoryMusic {
 
             SourceDataLine playbackLine = null;
             try {
-                // Each repeat opens a fresh stream and skips to the same
-                // configured starting second. No whole-file buffering.
+                // Reopen a fresh stream at the same offset on each loop.
                 while (running) {
                     try (AudioInputStream source = AudioSystem.getAudioInputStream(file)) {
                         AudioFormat sourceFormat = source.getFormat();
@@ -189,8 +268,7 @@ public final class StoryMusic {
                             }
                         }
                     }
-                    // EOF: loop from the same offset. For a 53-second cue,
-                    // every repeat starts again at 0:53, never at 0:00.
+                    // EOF: repeat using the same start offset.
                 }
             } catch (Exception exception) {
                 if (running) {
@@ -212,8 +290,6 @@ public final class StoryMusic {
         }
 
         private static AudioFormat choosePlaybackFormat(AudioFormat source) {
-            // SourceDataLine expects PCM. WAV can also contain float or
-            // other encodings; Java Sound conversion handles those when available.
             AudioFormat desired = new AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
                     source.getSampleRate(),
