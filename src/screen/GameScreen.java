@@ -51,6 +51,8 @@ import entity.Entity;
 import entity.Particle;
 import entity.Ship;
 import item.ItemSystem;
+import skilltree.SkillEffects;
+import skilltree.SkillStat;
 import item.ItemAPI.EventType;
 import item.ItemAPI.ItemEvent;
 
@@ -306,6 +308,8 @@ public class GameScreen extends Screen {
 	private List<long[]> scoreBoostPopups;
 	/** Item system of this run (Team CS). Kept across levels by ItemSystem. */
 	private ItemSystem items;
+	/** Effects of the ship's unlocked skill tree nodes (GOG-89). */
+	private SkillEffects skills;
 	/** Item slot keys (1-9) held last frame, so holding a key uses it once. */
 	private boolean[] itemSlotKeysHeld = new boolean[9];
 	/** Skin chosen in Customize; animated skins change colour each frame (GoG). */
@@ -447,8 +451,14 @@ public class GameScreen extends Screen {
 		this.ship.setSkinColor(this.skin.getColor());
 		// Ship look chosen in Customize (A1): only the sprite changes.
 		shop.ShapeSkin shape = PurchaseManager.getInstance()
-				.getSelectedShape(this.ship.getType());
+								.getSelectedShape(this.ship.getType());
 		this.ship.setShapeSprite(shape == null ? null : shape.getSprite());
+		// Skill tree nodes unlocked for this ship (GOG-89).
+		this.skills = SkillEffects.forShip(this.ship.getType());
+		this.ship.setSkillBonuses(this.skills.multiplier(SkillStat.SPEED),
+				this.skills.multiplier(SkillStat.FIRE_RATE),
+				this.skills.multiplier(SkillStat.BULLET_SPEED),
+				this.skills.multiplier(SkillStat.BULLET_SIZE));
 		// Appears each 10-30 seconds.
 		this.enemyShipSpecialCooldown = Core.getVariableCooldown(
 				BONUS_SHIP_INTERVAL, BONUS_SHIP_VARIANCE);
