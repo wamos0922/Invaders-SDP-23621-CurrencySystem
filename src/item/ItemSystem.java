@@ -68,8 +68,10 @@ public final class ItemSystem {
         void addScore(int points);
     }
 
+    
     private ItemSystem(Random random) {
-        balance = ItemBalance.load();
+        balance = ItemBalance.load().withBonuses(runDropChanceBonus, runGroundMillisBonus,
+            runRapidFireStacksBonus); // skill tree bonuses (GOG-89)
         catalog = new ItemDefinitions(balance); // pick up balance changes for the equipment calls too
         // GOG-50: a run can have several equipped items (3 in Endless, 1 in Story).
         List<ItemInfo> equipped = runEquipmentItems();
@@ -105,7 +107,20 @@ public final class ItemSystem {
     // (e.g. a shop purchase) belongs to the caller, which then calls grantEquipment.
 
 
+
     private static final String EQUIPMENT_FILE = "equipment";
+    /** Skill tree bonuses for the next run (GOG-89): item drop chance, ground time, Rapid Fire stacks. */
+    private static double runDropChanceBonus;
+    private static long runGroundMillisBonus;
+    private static int runRapidFireStacksBonus;
+
+    /** Sets the skill tree bonuses used when the next run starts (GOG-89). */
+    public static void setRunBonuses(double dropChanceBonus, long groundMillisBonus, int rapidFireStacksBonus) {
+        runDropChanceBonus = dropChanceBonus;
+        runGroundMillisBonus = groundMillisBonus;
+        runRapidFireStacksBonus = rapidFireStacksBonus;
+    }
+
     /** Item ids equipped for the next run (GOG-50 loadout). Null = use the single equipped item. */
     private static List<String> runEquipment;
 
