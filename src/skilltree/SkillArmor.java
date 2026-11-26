@@ -63,8 +63,27 @@ public final class SkillArmor {
 	 *            Current time.
 	 * @return True while a skill shield is on (to draw it).
 	 */
-	public boolean shieldActive(final long now) {
+		public boolean shieldActive(final long now) {
 		return now < this.shieldUntil;
+	}
+
+	/**
+	 * The game was paused: shields and invincibility last that much longer,
+	 * so pausing doesn't use them up (like the freeze and the Stinger's
+	 * 1-life period).
+	 *
+	 * @param pausedMillis
+	 *            How long the game was paused.
+	 */
+	public void resumeAfterPause(final long pausedMillis) {
+		if (pausedMillis <= 0)
+			return;
+		// An end time before the pause stays in the past, so an expired
+		// shield never comes back.
+		if (this.shieldUntil > 0)
+			this.shieldUntil += pausedMillis;
+		if (this.invincibleUntil > 0)
+			this.invincibleUntil += pausedMillis;
 	}
 
 	/**

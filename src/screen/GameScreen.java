@@ -1004,8 +1004,12 @@ public class GameScreen extends Screen {
 			this.ship.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the black hole scene (GOG-74).
-		if (this.paused && this.blackHole != null)
+				if (this.paused && this.blackHole != null)
 			this.blackHole.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor the Armor skill shields (GOG-89).
+		if (this.paused)
+			this.armor.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;

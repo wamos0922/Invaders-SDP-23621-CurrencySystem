@@ -56,6 +56,25 @@ public final class SkillArmorTest {
         check(launch.shieldActive(7000) && launch.tryBlockHit(7000), "shield at +1 s");
         check(!launch.shieldActive(8100), "shield gone at +2.1 s");
 
+
+        // Pausing doesn't use up a shield: paused 5 s at +1 s, so it lasts until +7 s.
+        SkillArmor paused = new SkillArmor(withShared(2, 0), false);
+        paused.startLevel(0);
+        paused.resumeAfterPause(5000);
+        check(paused.shieldActive(6900), "paused shield still up at +6.9 s");
+        check(!paused.shieldActive(7100), "paused shield gone at +7.1 s");
+        // A shield that already ran out before the pause doesn't come back.
+        SkillArmor expired = new SkillArmor(withShared(2, 0), false);
+        expired.startLevel(0);
+        expired.resumeAfterPause(5000); // e.g. paused from +10 s to +15 s
+        check(!expired.shieldActive(15000), "expired shield stays off after a pause");
+        // Quick Repair invincibility is extended too.
+        SkillArmor repairPause = new SkillArmor(withShared(1, 0), false);
+        repairPause.onLifeLost(2, 10000);
+        repairPause.resumeAfterPause(3000);
+        check(repairPause.isInvincible(14400), "invincible still at +4.4 s after a 3 s pause");
+        check(!repairPause.isInvincible(14600), "not invincible at +4.6 s");
+
         // Last Stand: shield when down to 1 life, once per level.
         SkillArmor stand = new SkillArmor(withShared(3, 0), false);
         stand.startLevel(0);
