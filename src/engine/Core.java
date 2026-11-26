@@ -518,7 +518,7 @@ public final class Core {
 					break;
 
 				case ChallengeMenuScreen.CODE:
-					// Challenges menu and the daily challenge (GOG-102).
+					// Challenges menu: daily (GOG-102) and weekly (GOG-44).
 					returnCode = runChallenges(width, height);
 					break;
 
@@ -880,9 +880,9 @@ public final class Core {
 	}
 
 	/**
-	 * Shows the challenges menu and, if the player picks it, plays today's
-	 * daily challenge and its results screen (GOG-102). Uses no stamina
-	 * and never touches story saves or story rewards.
+	 * Shows the challenges menu and plays the daily (GOG-102) or weekly
+	 * (GOG-44) challenge the player picks, then its results screen. Uses
+	 * no stamina and never touches story saves or story rewards.
 	 *
 	 * @param width
 	 *            Screen width.
@@ -893,7 +893,9 @@ public final class Core {
 	 */
 	private static int runChallenges(final int width, final int height) {
 		currentScreen = new ChallengeMenuScreen(width, height, FPS);
-		if (frame.setScreen(currentScreen) != ChallengeMenuScreen.PLAY_DAILY)
+		int choice = frame.setScreen(currentScreen);
+		boolean weekly = choice == ChallengeMenuScreen.PLAY_WEEKLY;
+		if (!weekly && choice != ChallengeMenuScreen.PLAY_DAILY)
 			return 1;
 
 		SoundManager.getInstance().stopBgm();
@@ -902,19 +904,28 @@ public final class Core {
 				.getEquipped(ItemLoadout.Mode.STORY));
 
 		LocalDate day = LocalDate.now();
-		List<DailyChallenge.Stage> stages = DailyChallenge.stagesFor(day);
-		LOGGER.info("Starting daily challenge for " + day);
+		List<DailyChallenge.Stage> stages = weekly
+				? WeeklyChallenge.stagesFor(day)
+				: DailyChallenge.stagesFor(day);
+		LOGGER.info("Starting " + (weekly ? "weekly" : "daily")
+				+ " challenge for " + day);
 
 		GameState state = new GameState(stages.get(0).getLevel(), 0,
 				MAX_LIVES, 0, 0, 0);
 		int stagesCleared = 0;
 		DailyChallenge.setRunning(true);
 		try {
-			for (DailyChallenge.Stage stage : stages) {
+			for (int i = 0; i < stages.size(); i++) {
+				DailyChallenge.Stage stage = stages.get(i);
+				int lives = state.getLivesRemaining();
+				// Weekly: one life back before the first boss (GOG-44).
+				if (weekly)
+					lives = WeeklyChallenge.livesForStage(stages, i, lives,
+							MAX_LIVES);
 				// Challenges pay shards, not story diamonds: pending
 				// diamonds are dropped between stages.
 				state = new GameState(stage.getLevel(), state.getScore(),
-						state.getLivesRemaining(), state.getBulletsShot(),
+						lives, state.getBulletsShot(),
 						state.getShipsDestroyed(), 0,
 						state.getLevelsCompletedRun(),
 						state.getCoinsCollected());
@@ -932,13 +943,16 @@ public final class Core {
 		}
 
 		boolean cleared = stagesCleared == stages.size();
-		String reward = cleared ? DailyChallenge.payReward(day) : null;
-		LOGGER.info("Daily challenge " + (cleared ? "cleared" : "failed")
-				+ ": " + stagesCleared + "/" + stages.size() + " stages.");
+		String reward = !cleared ? null
+				: weekly ? WeeklyChallenge.payReward(day)
+						: DailyChallenge.payReward(day);
+		LOGGER.info((weekly ? "Weekly" : "Daily") + " challenge "
+				+ (cleared ? "cleared" : "failed") + ": " + stagesCleared
+				+ "/" + stages.size() + " stages.");
 
 		currentScreen = new ChallengeResultScreen(width, height, FPS,
-				cleared, stagesCleared, stages.size(), state.getScore(),
-				reward);
+				weekly, cleared, stagesCleared, stages.size(),
+				state.getScore(), reward);
 		frame.setScreen(currentScreen);
 		return ChallengeMenuScreen.CODE;
 	}
