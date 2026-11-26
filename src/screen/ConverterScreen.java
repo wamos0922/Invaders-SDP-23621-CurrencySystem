@@ -147,7 +147,7 @@ public class ConverterScreen extends Screen {
 
 	/** @return True if the player has enough shards to give. */
 	private boolean canAfford() {
-		return ShardBar.count(this.give) >= givePerConversion() * this.amount;
+		return ShardBar.count(this.give) >= (long) givePerConversion() * this.amount;
 	}
 
 	// --- Input ---
@@ -249,7 +249,9 @@ public class ConverterScreen extends Screen {
 				this.message = null;
 				break;
 			case "+":
-				this.amount++;
+				// Never more than the player can pay for (at least 1).
+				if (this.amount < maxAmount())
+					this.amount++;
 				this.message = null;
 				break;
 			case "MAX":
@@ -264,11 +266,13 @@ public class ConverterScreen extends Screen {
 
 	/** Converts the chosen amount and says what happened. */
 	private void convert() {
-		int given = givePerConversion() * this.amount;
-		int received = getPerConversion() * this.amount;
+		long given = (long) givePerConversion() * this.amount;
+		long received = (long) getPerConversion() * this.amount;
 		if (!canAfford()) {
 			this.message = "Not enough " + this.give.getDisplayName()
 					+ " shards (need " + given + ")";
+		} else if (ShardBar.count(this.get) + received > Integer.MAX_VALUE) {
+			this.message = "Too many at once - convert fewer";
 		} else if (ShardConverter.convert(ShardWallet.getInstance(),
 				this.give, this.get, this.amount)) {
 			this.message = "Converted " + given + " "
@@ -398,8 +402,8 @@ public class ConverterScreen extends Screen {
 		ShardBar.animatedIcon(drawManager, this.get, getX, PREVIEW_TOP + 6,
 				big);
 
-		String given = "-" + givePerConversion() * this.amount;
-		String received = "+" + getPerConversion() * this.amount;
+		String given = "-" + (long) givePerConversion() * this.amount;
+		String received = "+" + (long) getPerConversion() * this.amount;
 		drawManager.drawRegularString(given, giveX + big / 2
 				- drawManager.getRegularStringWidth(given) / 2,
 				PREVIEW_TOP + 70, canAfford() ? Color.WHITE : RED);

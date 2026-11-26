@@ -72,7 +72,8 @@ public final class ShardConverter {
 	 * @param conversions
 	 *            How many conversions, 1 or more.
 	 * @return False (and nothing changes) if the rarities are the same,
-	 *         the wallet can't pay, or saving failed.
+	 *         the wallet can't pay, the result would be too big to store,
+	 *         or saving failed.
 	 */
 	public static boolean convert(final ShardWallet wallet,
 			final ShardType give, final ShardType get,
@@ -80,9 +81,15 @@ public final class ShardConverter {
 		if (give == get || conversions < 1
 				|| conversions > maxConversions(wallet, give, get))
 			return false;
+		// long: breaking down many shards (x3 per step) can pass the int
+		// limit. Such a conversion is refused instead of wrapping around.
+		long given = (long) givePerConversion(give, get) * conversions;
+		long received = (long) getPerConversion(give, get) * conversions;
+		if (received > Integer.MAX_VALUE)
+			return false;
 		int[] change = new int[ShardType.values().length];
-		change[give.ordinal()] = -givePerConversion(give, get) * conversions;
-		change[get.ordinal()] = getPerConversion(give, get) * conversions;
+		change[give.ordinal()] = (int) -given;
+		change[get.ordinal()] = (int) received;
 		return wallet.apply(change);
 	}
 

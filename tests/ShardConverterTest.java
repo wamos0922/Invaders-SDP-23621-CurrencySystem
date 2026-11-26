@@ -50,6 +50,20 @@ public final class ShardConverterTest {
         check(ShardConverter.convert(wallet, ShardType.RARE, ShardType.COMMON, 1), "break down failed");
         check(wallet.get(ShardType.COMMON) == 5 && wallet.get(ShardType.RARE) == 1, "after break down");
 
+                // Very large amounts are refused, never wrapped around (overflow).
+        ShardWallet big = ShardWallet.forFile(new File(Files.createTempDirectory("converter-big").toFile(), "shards"));
+        // 81 x 53,024,316 = 4,294,969,596 wraps around int to just 4,300:
+        // without the check the player would lose 53M Mythic for 4,300 Common.
+        big.add(ShardType.MYTHIC, 53_024_316);
+        check(!ShardConverter.convert(big, ShardType.MYTHIC, ShardType.COMMON, 53_024_316), "81 x 53M common is too many");
+        check(big.get(ShardType.MYTHIC) == 53_024_316 && big.get(ShardType.COMMON) == 0, "refused convert changes nothing");
+        check(ShardConverter.convert(big, ShardType.MYTHIC, ShardType.COMMON, 1_000_000), "81M common still fits");
+        check(big.get(ShardType.COMMON) == 81_000_000, "81M common received");
+        check(big.add(ShardType.COMMON, Integer.MAX_VALUE - 81_000_000), "fill up to the limit");
+        check(!big.add(ShardType.COMMON, 1), "wallet can't go past the int limit");
+        check(!ShardConverter.convert(big, ShardType.MYTHIC, ShardType.COMMON, 1), "full wallet refuses more");
+        check(big.get(ShardType.COMMON) == Integer.MAX_VALUE, "still exactly at the limit");
+        
         System.out.println("ShardConverterTest passed (" + checks + " checks).");
     }
 }
