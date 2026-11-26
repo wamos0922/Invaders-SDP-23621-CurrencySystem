@@ -3,7 +3,7 @@
 
 ## Why
 <!-- Which requirement / issue? Why now? -->
-Ticket: GOG-<number>   <!-- also put the key in the PR title, e.g. feat: add mode select menu (GOG-12) -->
+Ticket: GOG-<number>   <!-- also put the key in the PR title, e.g. feat: add mode selection menu (GOG-13) -->
 
 ## Changes
 - 
@@ -20,9 +20,10 @@ Ticket: GOG-<number>   <!-- also put the key in the PR title, e.g. feat: add mod
 ## Checklist
 - [ ] Branch is `GOG-<number>-<short-feature>` (key in UPPERCASE) and based on latest `main`
 - [ ] PR title is `<type>: <subject> (GOG-<number>)`
-- [ ] One feature per PR, under ~400 changed lines
-- [ ] CI is green
+- [ ] One feature per PR, under ~500 changed lines
+- [ ] CI is green (build, smoke test and `tests/`)
+- [ ] I added or updated a test in `tests/` for my own logic (if the PR changes logic)
 - [ ] Touches `DrawManager` / `Core` / `GameScreen`? → explained above
 - [ ] I ran the game after my change
-- [ ] Depends on another PR? → `Depends on: #N` is the first line of this description
-- [ ] Reviewer requested: Haikal or Akif
+- [ ] Depends on another PR? → `Depends on: #N` is the first line of this description. If not write None
+- [ ] Reviewer requested: Akif, then Ikhwan then Haikal
