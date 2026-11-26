@@ -688,7 +688,10 @@ public class GameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.enemyShipFormation.shoot(this.bullets);
-				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
+				// No bonus meteor in challenges: challenges pay no
+				// diamonds, so its diamonds would be lost (GOG-104).
+				if (!DailyChallenge.isRunning())
+					this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
 			updateLowHealthEffect();
 			this.ship.setBlinking(this.lowHealthActive);
