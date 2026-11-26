@@ -43,7 +43,10 @@ public final class DailyChallenge {
 	/** Mixed into the date so the daily and weekly picks differ. */
 	private static final long SEED_SALT = 0x6F67L;
 
-	/** True while a daily challenge run is being played. */
+	/**
+	 * True while a challenge run (daily or weekly) is being played, so
+	 * GameScreen skips story-only achievements and the bonus meteor.
+	 */
 	private static boolean running;
 	/** Pays the reward for a cleared challenge (GOG-46). */
 	private static RewardHandler rewardHandler;
@@ -81,7 +84,8 @@ public final class DailyChallenge {
 		/** @return Short description for menus, e.g. "Act 2 boss". */
 		public String describe() {
 			return this.boss ? "Act " + this.act + " boss"
-					: "Act " + this.act + " level " + WAVE_LEVEL_IN_ACT;
+					: "Act " + this.act + " level " + (this.level
+							- (this.act - 1) * StoryMode.LEVELS_PER_CHAPTER);
 		}
 	}
 
@@ -153,17 +157,22 @@ public final class DailyChallenge {
 	 */
 	public static String formatCountdown(final Duration duration) {
 		long seconds = Math.max(0, duration.getSeconds());
-		return String.format("%02d:%02d:%02d", seconds / 3600,
-				(seconds / 60) % 60, seconds % 60);
+		String clock = String.format("%02d:%02d:%02d",
+				(seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60);
+		long days = seconds / 86400;
+		// Exactly 24h (daily at midnight) still reads 24:00:00.
+		if (days == 0 || seconds == 86400)
+			return seconds == 86400 ? "24:00:00" : clock;
+		return days + "d " + clock;
 	}
 
-	/** @return True while a daily challenge run is being played. */
+	/** @return True while a challenge run (daily or weekly) is played. */
 	public static boolean isRunning() {
 		return running;
 	}
 
 	/**
-	 * Marks a daily challenge run as started or finished. Core calls this
+	 * Marks a challenge run (daily or weekly) as started or finished. Core calls this
 	 * around the run, so GameScreen can skip story-only achievements.
 	 *
 	 * @param value
@@ -220,7 +229,7 @@ public final class DailyChallenge {
 	 *            Level inside the act, 1 to LEVELS_PER_CHAPTER.
 	 * @return The story level number.
 	 */
-	private static int levelOf(final int act, final int levelInAct) {
+	static int levelOf(final int act, final int levelInAct) {
 		return (act - 1) * StoryMode.LEVELS_PER_CHAPTER + levelInAct;
 	}
 }
