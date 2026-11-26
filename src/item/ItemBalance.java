@@ -72,9 +72,30 @@ final class ItemBalance {
             }
         }
         return new ItemBalance(settings);
+        }
+
+    /** The settings this balance was read from, so skill bonuses can be added (GOG-89). */
+    private final Properties source;
+
+    /**
+     * Copy of this balance with skill tree bonuses added (GOG-89): item drop chance, ground time
+     * of drops and Rapid Fire stacks.
+     */
+    ItemBalance withBonuses(double dropChanceBonus, long groundMillisBonus, int rapidFireStacksBonus) {
+        Properties changed = new Properties();
+        changed.putAll(source);
+        changed.setProperty("drop.regular.probability",
+            Double.toString(Math.min(1.0, regularDropProbability + Math.max(0, dropChanceBonus))));
+        changed.setProperty("drop.groundLifetimeMillis",
+            Long.toString(groundLifetimeMillis + Math.max(0, groundMillisBonus)));
+        changed.setProperty("rapidFire.maxStacks",
+            Integer.toString(rapidFireMaxStacks + Math.max(0, rapidFireStacksBonus)));
+        return new ItemBalance(changed);
     }
 
     ItemBalance(Properties settings) {
+        source = new Properties();
+        source.putAll(settings);
         shieldDurationMillis = positiveLong(settings, "shield.durationMillis", 8_000L);
         shieldCharges = positiveInt(settings, "shield.charges", 1);
         rapidFireBonus = positiveDouble(settings, "rapidFire.bonus", 0.5);

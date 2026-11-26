@@ -51,7 +51,9 @@ import entity.Entity;
 import entity.Particle;
 import entity.Ship;
 import item.ItemSystem;
+import skilltree.SkillArmor;
 import skilltree.SkillEffects;
+import skilltree.SkillSalvage;
 import skilltree.SkillStat;
 import item.ItemAPI.EventType;
 import item.ItemAPI.ItemEvent;
@@ -310,6 +312,8 @@ public class GameScreen extends Screen {
 	private ItemSystem items;
 	/** Effects of the ship's unlocked skill tree nodes (GOG-89). */
 	private SkillEffects skills;
+	/** Armor skill nodes in this level: shields and blocked hits (GOG-89). */
+	private SkillArmor armor;
 	/** Item slot keys (1-9) held last frame, so holding a key uses it once. */
 	private boolean[] itemSlotKeysHeld = new boolean[9];
 	/** Skin chosen in Customize; animated skins change colour each frame (GoG). */
@@ -488,12 +492,20 @@ public class GameScreen extends Screen {
 		this.coinsCollectedThisLevel = 0;
 		this.achievementPopupQueue = new LinkedList<Achievement>();
 		this.coinDropManager = new CoinDropManager();
+		// Scavenger skill node: more coins (GOG-89).
+		this.coinDropManager.setDropChance(Math.min(1.0,
+				CoinDropManager.DEFAULT_DROP_CHANCE
+						+ SkillSalvage.coinChanceBonus(this.skills)));
 		this.pauseKeyCooldown = Core.getCooldown(PAUSE_KEY_DEBOUNCE);
 		this.pauseSelectionCooldown = Core.getCooldown(PAUSE_SELECTION_DEBOUNCE);
 		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
 		// Item System (Team CS): level 1 starts a new run, later levels keep it.
+		// Salvage and Cooled Barrel skill nodes change its drops (GOG-89).
+		ItemSystem.setRunBonuses(SkillSalvage.itemChanceBonus(this.skills),
+				SkillSalvage.groundTimeBonus(this.skills),
+				SkillSalvage.rapidFireExtraStacks(this.skills));
 		this.items = ItemSystem.forLevel(this.level);
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
@@ -508,6 +520,9 @@ public class GameScreen extends Screen {
 		this.gameStartTime = System.currentTimeMillis();
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
+		// Armor skill nodes: Launch Shield starts when the countdown ends (GOG-89).
+		this.armor = new SkillArmor(this.skills, this.midBoss != null);
+		this.armor.startLevel(this.gameStartTime + INPUT_DELAY);
 	}
 
 
@@ -668,7 +683,10 @@ public class GameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.enemyShipFormation.shoot(this.bullets);
-				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
+				// No bonus meteor in challenges: challenges pay no
+				// diamonds, so its diamonds would be lost (GOG-104).
+				if (!DailyChallenge.isRunning())
+					this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
 			updateLowHealthEffect();
 			this.ship.setBlinking(this.lowHealthActive);
@@ -986,8 +1004,12 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 			this.ship.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the black hole scene (GOG-74).
-		if (this.paused && this.blackHole != null)
+				if (this.paused && this.blackHole != null)
 			this.blackHole.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor the Armor skill shields (GOG-89).
+		if (this.paused)
+			this.armor.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
@@ -1063,6 +1085,10 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 			if (this.warpIn != null && this.warpIn.takeImpact())
 				this.screenShake.trigger();
 			drawManager.drawItemShield(this.ship, this.items); // Item System (Team CS)
+			if (this.armor.shieldActive(System.currentTimeMillis())) // Armor skill shield (GOG-89)
+				drawManager.drawBox(this.ship.getPositionX() - 4,
+						this.ship.getPositionY() - 4, this.ship.getWidth() + 8,
+						this.ship.getHeight() + 8, new java.awt.Color(120, 220, 255));
 			if (this.enemyShipSpecial != null)
 				drawManager.drawEntity(this.enemyShipSpecial,
 						this.enemyShipSpecial.getPositionX(),
@@ -1288,12 +1314,17 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 		// Back to the starting row, so the ship does not crash again
 		// straight away into the enemies next to the one it hit.
 		this.ship.setPositionY(this.height - SHIP_ROW_FROM_BOTTOM);
+		if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+			this.logger.info("Crashed into an enemy, blocked by Armor.");
+			return;
+		}
 		if (this.items.tryBlockHit()) { // Shield item (Team CS)
 			this.logger.info("Crashed into an enemy, blocked by shield.");
 			return;
 		}
 		this.ship.destroy();
 		this.lives--;
+		this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 		PlayerSounds.playHit(this.lives);
 		this.tookDamage = true;
 		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
@@ -1319,12 +1350,14 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 						startVulnerable();
 					} else if (bullet.isFreezing()) {
 						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
-						if (this.ship.freeze())
+												if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
 					} else if (!this.ship.isDestroyed()
+							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
 						this.lives--;
+						this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 						PlayerSounds.playHit(this.lives); // <-- Ajout du son
 						this.tookDamage = true; // Survivor tiers (Mantis)
 						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
@@ -1520,15 +1553,20 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 			double dx = this.ship.getPositionX() + this.ship.getWidth() / 2.0
 					- blast.x;
 			double dy = this.ship.getPositionY() + this.ship.getHeight() / 2.0
-					- blast.y;
+										- blast.y;
 			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
 				continue;
+			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+				this.logger.info("Comet blast blocked by Armor.");
+				continue;
+			}
 			if (this.items.tryBlockHit()) { // Shield item (Team CS)
 				this.logger.info("Comet blast blocked by shield.");
 				continue;
 			}
 			this.ship.destroy();
 			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 			PlayerSounds.playHit(this.lives);
 			this.tookDamage = true;
 			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
@@ -1546,15 +1584,20 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 				|| this.ship.isDestroyed() || this.lives <= 0)
 			return;
 		int crashes = this.enemyShipFormation.takeDropHits(this.ship);
-		for (int i = 0; i < crashes && this.lives > 0
+				for (int i = 0; i < crashes && this.lives > 0
 				&& !this.ship.isDestroyed(); i++) {
 			this.screenShake.trigger();
+			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+				this.logger.info("Orbit Fighter crash blocked by Armor.");
+				continue;
+			}
 			if (this.items.tryBlockHit()) { // Shield item (Team CS)
 				this.logger.info("Orbit Fighter crash blocked by shield.");
 				continue;
 			}
 			this.ship.destroy();
 			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 			PlayerSounds.playHit(this.lives);
 			this.tookDamage = true;
 			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
