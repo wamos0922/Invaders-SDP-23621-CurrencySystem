@@ -1132,8 +1132,9 @@ public class StoryPanel extends JPanel {
         typingTimer.stop();
         animationTimer.stop();
 
-        // Panel 27 continues to the Level 40 boss; all other cutscenes stop.
-        if (!(panelNumber == 27 && lastPanel == 27)) {
+        // Panels 26 and 27 hand their soundtracks to the following gameplay levels.
+        if (!((panelNumber == 26 && lastPanel == 26)
+                || (panelNumber == 27 && lastPanel == 27))) {
             StoryMusic.stop();
         }
         if (wrenchDropSound != null) {

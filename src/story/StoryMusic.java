@@ -13,18 +13,67 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * GOG-35: Music for Story Mode cutscenes only.
+ * GOG-35: Story Mode cutscene and gameplay music.
  *
- * WAV files are streamed on a daemon thread, not loaded as huge Clips.
- * A cue shared by consecutive panels continues at the same playback position.
- * When a cue ends, it loops from its configured beginning (e.g. 0:53).
- * Panel 27 is the sole exception to the cutscene-only rule: its soundtrack
- * stays alive through Level 40, and stops when that battle ends.
+ * WAVs are streamed on a daemon thread rather than loaded as huge Clips.
+ * Identical consecutive cues do not restart. On EOF, each track loops
+ * from its configured start time.
+ *
+ * Story gameplay tracks:
+ *   Levels 1-9:   FirstPhase.wav
+ *   Levels 11-19: SecondPhase.wav
+ * Levels 36-39 continue backup.wav at 0:53 from Panel 26.
+ * Boss Level 40 continues finalBoss.wav from Panel 27.
+ * Other gameplay levels have no custom Story Mode music yet.
  */
 public final class StoryMusic {
     private static Playback active;
 
     private StoryMusic() { }
+
+    /**
+     * Choose the regular gameplay soundtrack without starting audio.
+     * Package-independent and testable without a sound device.
+     *
+     * @return The WAV filename, or null if this level has no regular BGM yet.
+     */
+    public static String trackForLevel(int level) {
+        if (level >= 1 && level <= 9) {
+            return "FirstPhase.wav";
+        }
+        if (level >= 11 && level <= 19) {
+            return "SecondPhase.wav";
+        }
+        if (level >= 36 && level <= 39) {
+            return "backup.wav";
+        }
+        return null;
+    }
+
+    /**
+     * Called when entering (or restarting) a Story Mode gameplay level.
+     * This method is NOT used by Endless Mode or Daily Challenges.
+     */
+    public static void playForLevel(int level) {
+        if (level == 40) {
+            // Continue Panel 27 without restarting the final boss song.
+            playForPanel(27, 1);
+            return;
+        }
+        if (level >= 36 && level <= 39) {
+            // Preserve the live Panel 26 cue and its playback position.
+            // If a player loads Level 36 directly, begin at 0:53 instead.
+            play("backup.wav", 53);
+            return;
+        }
+        String track = trackForLevel(level);
+        if (track == null) {
+            // Bosses 10/20/30 and stages 21-35 have no gameplay track yet.
+            stop();
+        } else {
+            play(track, 0);
+        }
+    }
 
     public static void playForPanel(int panel, int dialogueLine) {
         switch (panel) {
@@ -64,7 +113,7 @@ public final class StoryMusic {
                 play("storytime.wav", 0);
                 break;
             case 27:
-                // Exact filename in the repository uses capital B.
+                // Exact filename uses capital B.
                 play("finalBoss.wav", 0);
                 break;
             case 28:
@@ -81,7 +130,7 @@ public final class StoryMusic {
         }
     }
 
-    /** Start only if this is a new cue; do not restart across adjacent panels. */
+    /** Start only if this is a new cue; do not restart identical cues. */
     private static synchronized void play(String filename, int beginningSeconds) {
         if (active != null && active.running
                 && active.filename.equals(filename)
@@ -99,7 +148,7 @@ public final class StoryMusic {
         thread.start();
     }
 
-    /** Called on every normal cutscene exit and on Level 40 clear/game over. */
+    /** Stop on gameplay exit, game over, or when switching to other music. */
     public static synchronized void stop() {
         Playback previous = active;
         active = null;
@@ -144,8 +193,7 @@ public final class StoryMusic {
 
             SourceDataLine playbackLine = null;
             try {
-                // Each repeat opens a fresh stream and skips to the same
-                // configured starting second. No whole-file buffering.
+                // Reopen a fresh stream at the same offset on each loop.
                 while (running) {
                     try (AudioInputStream source = AudioSystem.getAudioInputStream(file)) {
                         AudioFormat sourceFormat = source.getFormat();
@@ -189,8 +237,7 @@ public final class StoryMusic {
                             }
                         }
                     }
-                    // EOF: loop from the same offset. For a 53-second cue,
-                    // every repeat starts again at 0:53, never at 0:00.
+                    // EOF: repeat using the same start offset.
                 }
             } catch (Exception exception) {
                 if (running) {
@@ -212,8 +259,6 @@ public final class StoryMusic {
         }
 
         private static AudioFormat choosePlaybackFormat(AudioFormat source) {
-            // SourceDataLine expects PCM. WAV can also contain float or
-            // other encodings; Java Sound conversion handles those when available.
             AudioFormat desired = new AudioFormat(
                     AudioFormat.Encoding.PCM_SIGNED,
                     source.getSampleRate(),

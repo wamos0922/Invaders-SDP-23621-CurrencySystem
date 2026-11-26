@@ -397,21 +397,16 @@ public class GameScreen extends Screen {
 
 	public final void initialize() {
 		super.initialize();
-		// GOG-35: The regular gameplay BGM is only for Endless Mode
-		// and Daily Challenges. Story Mode uses panel-specific cutscene music.
+		// GOG-35: Dedicated gameplay music for Story Mode level ranges.
+		// Endless and Daily Challenges retain their normal gameplay BGM.
 		if (EndlessMode.isEnabled() || DailyChallenge.isRunning()) {
 			StoryMusic.stop();
 			SoundManager.getInstance().playBgm(Sound.BGM_GAME);
 		} else {
 			SoundManager.getInstance().stopBgm();
-			if (this.level == 40) {
-				// Continue the Panel 27 soundtrack without restarting it.
-				// Starting directly at level 40 will start finalBoss.wav.
-				StoryMusic.playForPanel(27, 1);
-			} else {
-				// No cutscene BGM is allowed during Story Levels 1-39.
-				StoryMusic.stop();
-			}
+			// Levels 1-9: FirstPhase, 11-19: SecondPhase.
+			// Level 40 still continues Panel 27's finalBoss.wav.
+			StoryMusic.playForLevel(this.level);
 		}
 
 		// Initialize the player in both boss and normal stages.
@@ -726,8 +721,10 @@ public class GameScreen extends Screen {
 			if (isCleared && this.lives > 0) {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
-				StoryMusic.stop();
-				SoundManager.getInstance().playSfx(Sound.VICTORY);
+// Keep Panel 26 music alive across victorious Levels 36-39.
+if (this.level < 36 || this.level > 39)
+StoryMusic.stop();
+SoundManager.getInstance().playSfx(Sound.VICTORY);
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
