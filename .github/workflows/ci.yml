@@ -95,9 +95,12 @@ jobs:
 
       - name: Run every test
         run: |
-          # Known stale tests: they read Core.SETTINGS_LEVEL_<n>, which no longer exists.
-          # Skipped until their owners update them (see the follow-up ticket).
-          EXCLUDE="EffectIntegrationTest TwoHitEnemyTest"
+          # Skipped on purpose:
+          # - EffectIntegrationTest, TwoHitEnemyTest: stale, they read Core.SETTINGS_LEVEL_<n>,
+          #   which no longer exists. Skipped until their owners update them (follow-up ticket).
+          # - test.StoryTest: an interactive playtest that opens the real game and needs a human
+          #   (F8 to skip levels), so it cannot run unattended.
+          EXCLUDE="EffectIntegrationTest TwoHitEnemyTest test.StoryTest"
           failed=0
           for f in $(find tests -name '*Test.java' | sort); do
             pkg=$(sed -n 's/^package \([A-Za-z0-9_.]*\);.*/\1/p' "$f" | head -1)
