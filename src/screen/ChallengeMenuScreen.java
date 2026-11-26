@@ -8,12 +8,15 @@ import java.util.List;
 import engine.Cooldown;
 import engine.Core;
 import engine.DailyChallenge;
+import engine.WeeklyChallenge;
 
 /**
- * Challenges menu (GOG-102): pick the daily challenge (the weekly one comes
- * later, GOG-44). Shows today's stages and the time until they change.
+ * Challenges menu (GOG-102, GOG-44): pick the daily or the weekly
+ * challenge. Shows the stages of the highlighted challenge and the time
+ * until they change.
  *
- * Returns {@link #PLAY_DAILY} to start the daily run, or 1 for the title.
+ * Returns {@link #PLAY_DAILY} or {@link #PLAY_WEEKLY} to start a run, or 1
+ * for the title screen.
  */
 public class ChallengeMenuScreen extends Screen {
 
@@ -21,6 +24,8 @@ public class ChallengeMenuScreen extends Screen {
 	public static final int CODE = 12;
 	/** Return code: start the daily challenge. */
 	public static final int PLAY_DAILY = 13;
+	/** Return code: start the weekly challenge. */
+	public static final int PLAY_WEEKLY = 14;
 
 	/** Milliseconds between two menu moves while a key is held. */
 	private static final int MOVE_DELAY = 200;
@@ -33,8 +38,8 @@ public class ChallengeMenuScreen extends Screen {
 	private enum Option {
 		/** Play today's daily challenge. */
 		DAILY("Daily challenge", true),
-		/** Weekly challenge, not built yet (GOG-44). */
-		WEEKLY("Weekly challenge - soon", false),
+		/** Play this week's weekly challenge (GOG-44). */
+		WEEKLY("Weekly challenge", true),
 		/** Back to the title screen. */
 		BACK("Back", true);
 
@@ -53,8 +58,12 @@ public class ChallengeMenuScreen extends Screen {
 	private Option selected;
 	/** Limits how fast the cursor moves while a key is held. */
 	private final Cooldown moveCooldown;
-	/** Today's stages, shown under the menu. */
-	private final List<DailyChallenge.Stage> stages;
+	/** Today's daily stages. */
+	private final List<DailyChallenge.Stage> dailyStages;
+	/** This week's weekly stages. */
+	private final List<DailyChallenge.Stage> weeklyStages;
+	/** Challenge whose details are shown: the last one highlighted. */
+	private Option shown;
 
 	/**
 	 * @param width
@@ -71,7 +80,9 @@ public class ChallengeMenuScreen extends Screen {
 		this.selected = Option.DAILY;
 		this.moveCooldown = Core.getCooldown(MOVE_DELAY);
 		this.moveCooldown.reset();
-		this.stages = DailyChallenge.stagesForToday();
+		this.dailyStages = DailyChallenge.stagesForToday();
+		this.weeklyStages = WeeklyChallenge.stagesForThisWeek();
+		this.shown = Option.DAILY;
 	}
 
 	/**
@@ -112,6 +123,9 @@ public class ChallengeMenuScreen extends Screen {
 			if (this.selected == Option.DAILY) {
 				this.returnCode = PLAY_DAILY;
 				this.isRunning = false;
+			} else if (this.selected == Option.WEEKLY) {
+				this.returnCode = PLAY_WEEKLY;
+				this.isRunning = false;
 			} else if (this.selected == Option.BACK) {
 				this.returnCode = 1;
 				this.isRunning = false;
@@ -129,6 +143,8 @@ public class ChallengeMenuScreen extends Screen {
 		Option[] options = Option.values();
 		this.selected = options[Math.floorMod(
 				this.selected.ordinal() + direction, options.length)];
+		if (this.selected != Option.BACK)
+			this.shown = this.selected;
 	}
 
 	/** Draws the menu and today's challenge. */
@@ -147,18 +163,25 @@ public class ChallengeMenuScreen extends Screen {
 			y += 30;
 		}
 
-		y += 30;
-		this.drawManager.drawCenteredRegularString(this, "Today's daily",
-				y, Color.GREEN);
-		for (int i = 0; i < this.stages.size(); i++) {
+		boolean weekly = this.shown == Option.WEEKLY;
+		List<DailyChallenge.Stage> stages = weekly ? this.weeklyStages
+				: this.dailyStages;
+		y += 20;
+		this.drawManager.drawCenteredRegularString(this,
+				weekly ? "This week's weekly" : "Today's daily", y,
+				Color.GREEN);
+		for (int i = 0; i < stages.size(); i++) {
 			y += 22;
 			this.drawManager.drawCenteredRegularString(this, (i + 1) + ". "
-					+ this.stages.get(i).describe(), y, Color.WHITE);
+					+ stages.get(i).describe(), y, Color.WHITE);
 		}
 		y += 32;
-		this.drawManager.drawCenteredRegularString(this, "New daily in "
-				+ DailyChallenge.formatCountdown(DailyChallenge
-						.timeUntilReset(LocalDateTime.now())), y, MUTED);
+		LocalDateTime now = LocalDateTime.now();
+		this.drawManager.drawCenteredRegularString(this, weekly
+				? "New weekly in " + DailyChallenge.formatCountdown(
+						WeeklyChallenge.timeUntilReset(now))
+				: "New daily in " + DailyChallenge.formatCountdown(
+						DailyChallenge.timeUntilReset(now)), y, MUTED);
 
 		this.drawManager.drawKeyHints(this,
 				"w/s move, space select, esc back");
