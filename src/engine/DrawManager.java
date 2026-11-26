@@ -244,7 +244,10 @@ public final class DrawManager {
 		OrbitFighter2,
 		/** Act 3 (Saturn) row 5, Moonlet Pod, two frames (GoG, GOG-28). */
 		MoonletPod1,
-		MoonletPod2
+		MoonletPod2,
+		/** Level 30 boss Ring Dreadnought, two frames, 24 x 16 (GoG, GOG-81). */
+		RingDreadnought1,
+		RingDreadnought2
 	};
 
 	/**
@@ -373,6 +376,10 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.OrbitFighter2, new boolean[12][8]);
 			spriteMap.put(SpriteType.MoonletPod1, new boolean[12][8]);
 			spriteMap.put(SpriteType.MoonletPod2, new boolean[12][8]);
+
+			// Level 30 boss Ring Dreadnought (GoG, GOG-81)
+			spriteMap.put(SpriteType.RingDreadnought1, new boolean[24][16]);
+			spriteMap.put(SpriteType.RingDreadnought2, new boolean[24][16]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
