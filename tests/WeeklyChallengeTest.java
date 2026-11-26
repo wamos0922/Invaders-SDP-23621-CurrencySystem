@@ -74,6 +74,17 @@ public final class WeeklyChallengeTest {
         check(DailyChallenge.formatCountdown(Duration.ofHours(24)).equals("24:00:00"), "daily midnight format");
         check(DailyChallenge.formatCountdown(Duration.ofSeconds(3725)).equals("01:02:05"), "short format");
 
+        // Extra life before the first boss only, capped at the maximum.
+        List<DailyChallenge.Stage> week = WeeklyChallenge.stagesFor(firstSunday);
+        for (int i = 0; i < 4; i++)
+            check(WeeklyChallenge.livesForStage(week, i, 1, 3) == 1, "life given on act stage " + (i + 1));
+        check(WeeklyChallenge.livesForStage(week, 4, 1, 3) == 2, "first boss: 1 life should become 2");
+        check(WeeklyChallenge.livesForStage(week, 4, 2, 3) == 3, "first boss: 2 lives should become 3");
+        check(WeeklyChallenge.livesForStage(week, 4, 3, 3) == 3, "first boss: lives went above the maximum");
+        check(WeeklyChallenge.livesForStage(week, 5, 1, 3) == 1, "second boss gave a life too");
+        check(WeeklyChallenge.livesForStage(week, 5, 2, 3) == 2, "second boss gave a life too");
+        check(WeeklyChallenge.EXTRA_LIVES_BEFORE_BOSSES == 1, "extra lives constant changed");
+
         // Reward hook.
         WeeklyChallenge.setRewardHandler(null);
         check(WeeklyChallenge.payReward(saturday).contains("coming soon"), "no-handler text");

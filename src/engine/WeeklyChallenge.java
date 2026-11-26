@@ -104,6 +104,30 @@ public final class WeeklyChallenge {
 		return stages;
 	}
 
+	/**
+	 * Lives to start a stage with: one life back before the first boss,
+	 * never above the maximum. Other stages keep the lives left.
+	 *
+	 * @param stages
+	 *            The run's stages, in play order.
+	 * @param index
+	 *            Index of the stage about to start.
+	 * @param lives
+	 *            Lives left after the previous stage.
+	 * @param maxLives
+	 *            Most lives the player can have.
+	 * @return Lives for the stage.
+	 */
+	public static int livesForStage(final List<DailyChallenge.Stage> stages,
+			final int index, final int lives, final int maxLives) {
+		for (int i = 0; i < index; i++)
+			if (stages.get(i).isBoss())
+				return lives; // Only the first boss gives a life back.
+		if (!stages.get(index).isBoss())
+			return lives;
+		return Math.min(maxLives, lives + EXTRA_LIVES_BEFORE_BOSSES);
+	}
+
 	/** @return This week's stages, by the computer's local date. */
 	public static List<DailyChallenge.Stage> stagesForThisWeek() {
 		return stagesFor(LocalDate.now());

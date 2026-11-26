@@ -913,18 +913,15 @@ public final class Core {
 		GameState state = new GameState(stages.get(0).getLevel(), 0,
 				MAX_LIVES, 0, 0, 0);
 		int stagesCleared = 0;
-		boolean bossLifeGiven = false;
 		DailyChallenge.setRunning(true);
 		try {
-			for (DailyChallenge.Stage stage : stages) {
+			for (int i = 0; i < stages.size(); i++) {
+				DailyChallenge.Stage stage = stages.get(i);
 				int lives = state.getLivesRemaining();
-				// Weekly: one life back before the first boss, up to the
-				// normal maximum (GOG-44).
-				if (weekly && stage.isBoss() && !bossLifeGiven) {
-					lives = Math.min(MAX_LIVES,
-							lives + WeeklyChallenge.EXTRA_LIVES_BEFORE_BOSSES);
-					bossLifeGiven = true;
-				}
+				// Weekly: one life back before the first boss (GOG-44).
+				if (weekly)
+					lives = WeeklyChallenge.livesForStage(stages, i, lives,
+							MAX_LIVES);
 				// Challenges pay shards, not story diamonds: pending
 				// diamonds are dropped between stages.
 				state = new GameState(stage.getLevel(), state.getScore(),
