@@ -19,7 +19,7 @@ Register your team by adding one row to the table below and submitting the chang
 |   0 | [Instructors](teams/Instructors.md)    | [Scott Uk-Jin Lee](https://github.com/scottukjinlee/scottukjinlee), [Seungho Kim](https://github.com/oh-gnues/oh-gnues), [Elkarmy Salma](https://github.com/salma5-cpu), [Eric Zhang](https://github.com/Eric-Zhang37)                | [Course guidance](teams/Instructors.md#responsibilities) |
 |   1 | [Hanyang Space](teams/HanyangSpace.md) | [Muhammed Ali Garanli](https://github.com/AyeJay21), [Axel Jeremy Raphael Agat Tutkovics](https://github.com/Axel-ece), [Elio Ellini](https://github.com/elioeln), [Massyl Ait Ali Belkacem](https://github.com/Ma55yl), [Valentin HEBRAS LECLERC](https://github.com/Valzzzzzzzzzz), [Jung Seungwoo](https://github.com/swjung2313), [Erwan GUILLEM](https://github.com/R2D2-4997), [Solal Coupin Dagnet](https://github.com/solal67) | [Sound Effects](teams/HanyangSpace.md#responsibilities)  |
 |   2 | [A1](https://github.com/calzsvg/A1) | [Shin Hui Lee](https://github.com/illtr), [Hoyoung Yoon](https://github.com/calzsvg), [Minju Kang](https://github.com/kitxk1102), [Naman](https://github.com/ExotizZn), [Siyoung Park](https://github.com/athic06), [Seunghyun Moon](https://github.com/hysh144), [Yeonwoo Choi](https://github.com/Happy623623), [Christian Villarreal](https://github.com/chrisune07), [Nacim](https://github.com/Nacim20) | [Player & Enemy Ship Variety](teams/A1.md#team-requirements) |
-|   3 | [GOG](https://github.com/haikalfiqri/SpaceInvaderGoG) | [Haikal Fiqri](https://github.com/haikalfiqri), [Ikhwan Zarif](https://github.com/wamos0922), [Nik Ammar](https://github.com/nikmar9705), [Zarith Imran](https://github.com/zeth-ux), [Wafi](https://github.com/wafisapuan), [Muizzuddin](https://github.com/mfuizz), [Aqil Amani](https://github.com/Soy05), [Asyrafuddin](https://github.com/asyrafuddin), [Akip](https://github.com/abangBoy13) | [Currency System](teams/GoG.md#responsibilities) |
+|   3 | [GOG](https://github.com/haikalfiqri/SpaceInvaderGoG) | [Haikal Fiqri](https://github.com/haikalfiqri), [Ikhwan Zarif](https://github.com/wamos0922), [Nik Ammar](https://github.com/nikmar9705), [Zarith Imran](https://github.com/zeth-ux), [Wafi](https://github.com/wafisapuan), [Muizzuddin](https://github.com/mfuizz), [Aqil Amani](https://github.com/Soy05), [Asyrafuddin](https://github.com/asyrafuddin), [Akif](https://github.com/abangBoy13) | [Currency System](teams/GoG.md#responsibilities) |
 |   4 | [ECE](https://github.com/Rochdgrvrn/ECE-)| [Maxence](https://github.com/maxinator196)  , [Thomas Duval](https://github.com/TraderX-2) , [Thomas Favre](https://github.com/fvpok) , [Hugo Fedoroff](https://github.com/Hugofedoroff) , [Roch Le Pere De Graveron](https://github.com/Rochdgrvrn), [Robin Sénéchal](https://github.com/Robinsene) , [Eliott Siquier](https://github.com/eliottlemaxibg) , [Ghali Benharbit](https://github.com/GhaliBenh)  | [Gameplay HUD](teams/teamsECE.md)  |
 |   5 | [KFC](https://github.com/1322528197ldy-tech/KFC-Invaders-SDP-23621) | [Li DongYuan](https://github.com/1322528197ldy-tech), [Ryu DongHee](https://github.com/d0nghee09), [Jeremie GABOVICH](https://github.com/jereme26), [Park SungHyun](https://github.com/psh0709), [Jang YoonSoo](https://github.com/yoonsoo1007), [Chen ZiYing](https://github.com/Cedric0716), [Xie HaoZhe](https://github.com/hxie2137), [Jin dongzheng](https://github.com/Jdz1128) | [Level Design System](https://github.com/1322528197ldy-tech/KFC-Invaders-SDP-23621/blob/main/teams/KFC.md#3-detailed-requirements) |
 |   6 | [Effection](https://github.com/KaiSuf/Invaders-SDP-23621)     | [Khairul Suffie](https://github.com/KaiSuf), [Ariq Iqbal](https://github.com/ariqiqbal), [Alya Fatihah](https://github.com/alyafths), [Najihah](github.com/najihahs), [Dian Melissa](https://github.com/dianpines), [Maisarah](https://github.com/maisarah-mg), [NurSofia](https://github.com/sofiajourke), [Elisya Natasha](https://github.com/deluluclover) | [Visual Effects](teams/Effection.md#responsibilities)    |
@@ -43,7 +43,19 @@ Register your team by adding one row to the table below and submitting the chang
 
 - Contribution rules (branches, commits, PR titles, reviews): [CONTRIBUTING.md](CONTRIBUTING.md)
 - Process review, Scrumban agreement, roles and weekly check-ins: [docs/PROCESS.md](docs/PROCESS.md)
-- Team introduction, members and features: [teams/GoG.md](teams/GoG.md)
+- First-half roles and requirements: [teams/GoG.md](teams/GoG.md)
+
+| Member | Role in the second half | Main work |
+| --- | --- | --- |
+| Haikal Fiqri | Team lead, Jira admin | Jira setup and workflow, git rules, PR template, process docs, mode selection menu, animated main menu |
+| Zarith Imran | Game modes | Endless and story modes, free-roam movement, level completion rewards |
+| Aqil Amani | Level cards and stamina | Stamina system |
+| Ikhwan Zarif | Progression | Shards, skill tree, customize screens, shard space mode |
+| Muizzuddin | Story mode | Story script, story menu, planet progression, visuals and sound |
+| Wafi | Story content | Planet backgrounds, tutorial level, shard designs |
+| Asyrafuddin | Enemies and bosses | Enemy design and gameplay for levels 1-9 and 21-29, bosses at levels 10 and 30 |
+| Nik Ammar | Enemies and bosses | Enemy design and gameplay for levels 11-19 and 31-39, bosses at levels 20 and 40 |
+| Akif | Tester and main PR reviewer | Review and playtest, static analysis |
 
 ## Attribution and Licensing
 
