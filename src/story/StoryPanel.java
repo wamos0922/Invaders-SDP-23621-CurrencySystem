@@ -342,12 +342,12 @@ public class StoryPanel extends JPanel {
 
     /**
      * Optional metallic spanner-drop effect on panel 6, dialogue 3.
-     * File to provide: res/sounds/wrench_drop.wav.
+     * File to provide: res/sounds/wrench.wav.
      */
     private void playWrenchDrop() {
-        File file = new File("res/sounds/wrench_drop.wav");
+        File file = new File("res/sounds/wrench.wav");
         if (!file.isFile()) {
-            System.err.println("[STORY AUDIO] Optional wrench_drop.wav not found");
+            System.err.println("[STORY AUDIO] Optional wrench.wav not found");
             return;
         }
         try (AudioInputStream stream = AudioSystem.getAudioInputStream(file)) {
@@ -1132,8 +1132,9 @@ public class StoryPanel extends JPanel {
         typingTimer.stop();
         animationTimer.stop();
 
-        // Panel 27 continues to the Level 40 boss; all other cutscenes stop.
-        if (!(panelNumber == 27 && lastPanel == 27)) {
+        // Panels 26 and 27 hand their soundtracks to the following gameplay levels.
+        if (!((panelNumber == 26 && lastPanel == 26)
+                || (panelNumber == 27 && lastPanel == 27))) {
             StoryMusic.stop();
         }
         if (wrenchDropSound != null) {

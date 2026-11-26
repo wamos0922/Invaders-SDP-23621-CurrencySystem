@@ -6,11 +6,12 @@ import java.time.LocalDateTime;
 
 import engine.Core;
 import engine.DailyChallenge;
+import engine.WeeklyChallenge;
 
 /**
- * Results of a daily challenge run (GOG-102): cleared or failed, stages
- * cleared, score and reward. Space or Enter goes back to the challenges
- * menu.
+ * Results of a daily or weekly challenge run (GOG-102, GOG-44): cleared or
+ * failed, stages cleared, score and reward. Space or Enter goes back to the
+ * challenges menu.
  */
 public class ChallengeResultScreen extends Screen {
 
@@ -19,6 +20,8 @@ public class ChallengeResultScreen extends Screen {
 	/** Grey for secondary text. */
 	private static final Color MUTED = new Color(170, 170, 170);
 
+	/** True for the weekly challenge, false for the daily one. */
+	private final boolean weekly;
 	/** True if every stage was cleared. */
 	private final boolean cleared;
 	/** Stages cleared. */
@@ -39,6 +42,8 @@ public class ChallengeResultScreen extends Screen {
 	 *            Screen height.
 	 * @param fps
 	 *            Frames per second.
+	 * @param weekly
+	 *            True for the weekly challenge, false for the daily one.
 	 * @param cleared
 	 *            True if every stage was cleared.
 	 * @param stagesCleared
@@ -51,9 +56,11 @@ public class ChallengeResultScreen extends Screen {
 	 *            Reward text, or null if the run failed.
 	 */
 	public ChallengeResultScreen(final int width, final int height,
-			final int fps, final boolean cleared, final int stagesCleared,
+			final int fps, final boolean weekly, final boolean cleared,
+			final int stagesCleared,
 			final int stageCount, final int score, final String reward) {
 		super(width, height, fps);
+		this.weekly = weekly;
 		this.cleared = cleared;
 		this.stagesCleared = stagesCleared;
 		this.stageCount = stageCount;
@@ -93,8 +100,9 @@ public class ChallengeResultScreen extends Screen {
 	/** Draws the results. */
 	private void draw() {
 		this.drawManager.initDrawing(this);
+		String mode = this.weekly ? "Weekly" : "Daily";
 		this.drawManager.drawScreenTitle(this,
-				this.cleared ? "Daily cleared!" : "Daily failed");
+				mode + (this.cleared ? " cleared!" : " failed"));
 
 		int y = this.height / 3;
 		this.drawManager.drawCenteredRegularString(this, "Stages cleared: "
@@ -111,9 +119,12 @@ public class ChallengeResultScreen extends Screen {
 			this.drawManager.drawCenteredRegularString(this,
 					"Clear every stage to earn the reward", y, MUTED);
 		y += 40;
-		this.drawManager.drawCenteredRegularString(this, "New daily in "
-				+ DailyChallenge.formatCountdown(DailyChallenge
-						.timeUntilReset(LocalDateTime.now())), y, MUTED);
+		LocalDateTime now = LocalDateTime.now();
+		this.drawManager.drawCenteredRegularString(this, "New "
+				+ mode.toLowerCase() + " in "
+				+ DailyChallenge.formatCountdown(this.weekly
+						? WeeklyChallenge.timeUntilReset(now)
+						: DailyChallenge.timeUntilReset(now)), y, MUTED);
 
 		this.drawManager.drawKeyHints(this, "space continue");
 		this.drawManager.completeDrawing(this);

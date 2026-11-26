@@ -401,21 +401,16 @@ public class GameScreen extends Screen {
 
 	public final void initialize() {
 		super.initialize();
-		// GOG-35: The regular gameplay BGM is only for Endless Mode
-		// and Daily Challenges. Story Mode uses panel-specific cutscene music.
+		// GOG-35: Dedicated gameplay music for Story Mode level ranges.
+		// Endless and Daily Challenges retain their normal gameplay BGM.
 		if (EndlessMode.isEnabled() || DailyChallenge.isRunning()) {
 			StoryMusic.stop();
 			SoundManager.getInstance().playBgm(Sound.BGM_GAME);
 		} else {
 			SoundManager.getInstance().stopBgm();
-			if (this.level == 40) {
-				// Continue the Panel 27 soundtrack without restarting it.
-				// Starting directly at level 40 will start finalBoss.wav.
-				StoryMusic.playForPanel(27, 1);
-			} else {
-				// No cutscene BGM is allowed during Story Levels 1-39.
-				StoryMusic.stop();
-			}
+			// Levels 1-9: FirstPhase, 11-19: SecondPhase.
+			// Level 40 still continues Panel 27's finalBoss.wav.
+			StoryMusic.playForLevel(this.level);
 		}
 
 		// Initialize the player in both boss and normal stages.
@@ -455,7 +450,7 @@ public class GameScreen extends Screen {
 		this.ship.setSkinColor(this.skin.getColor());
 		// Ship look chosen in Customize (A1): only the sprite changes.
 		shop.ShapeSkin shape = PurchaseManager.getInstance()
-								.getSelectedShape(this.ship.getType());
+				.getSelectedShape(this.ship.getType());
 		this.ship.setShapeSprite(shape == null ? null : shape.getSprite());
 		// Skill tree nodes unlocked for this ship (GOG-89).
 		this.skills = SkillEffects.forShip(this.ship.getType());
@@ -550,15 +545,21 @@ public class GameScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
+		boolean clearedNormally = false;
 		try {
 			super.run();
+			// An interrupted or otherwise abnormal exit must not retain music.
+			clearedNormally = !this.isRunning && this.levelFinished
+					&& !this.gameOverActive && this.lives > 0;
 		} finally {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.lightningChain);
-			// Stop any leftover story soundtrack whenever gameplay exits:
-			// victory, game over, pause-menu quit, or an abnormal exit.
-			// Panel 27 music is allowed during Level 40, but not beyond it.
-			StoryMusic.stop();
+			// Only successful Story Mode clears of Levels 36-39 hand off music.
+			if (!StoryMusic.shouldContinueAfterLevel(this.level,
+					!EndlessMode.isEnabled() && !DailyChallenge.isRunning(),
+					clearedNormally)) {
+				StoryMusic.stop();
+			}
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -744,7 +745,11 @@ public class GameScreen extends Screen {
 			if (isCleared && this.lives > 0) {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
-				StoryMusic.stop();
+				// Keep Panel 26 music alive across victorious Story Levels 36-39.
+				if (!StoryMusic.shouldContinueAfterLevel(this.level,
+						!EndlessMode.isEnabled() && !DailyChallenge.isRunning(), true)) {
+					StoryMusic.stop();
+				}
 				SoundManager.getInstance().playSfx(Sound.VICTORY);
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
@@ -1007,7 +1012,7 @@ public class GameScreen extends Screen {
 			this.ship.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the black hole scene (GOG-74).
-				if (this.paused && this.blackHole != null)
+		if (this.paused && this.blackHole != null)
 			this.blackHole.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the Armor skill shields (GOG-89).
@@ -1353,7 +1358,7 @@ public class GameScreen extends Screen {
 						startVulnerable();
 					} else if (bullet.isFreezing()) {
 						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
-												if (this.ship.freeze())
+						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
 					} else if (!this.ship.isDestroyed()
 							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
@@ -1556,7 +1561,7 @@ public class GameScreen extends Screen {
 			double dx = this.ship.getPositionX() + this.ship.getWidth() / 2.0
 					- blast.x;
 			double dy = this.ship.getPositionY() + this.ship.getHeight() / 2.0
-										- blast.y;
+					- blast.y;
 			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
 				continue;
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
@@ -1587,7 +1592,7 @@ public class GameScreen extends Screen {
 				|| this.ship.isDestroyed() || this.lives <= 0)
 			return;
 		int crashes = this.enemyShipFormation.takeDropHits(this.ship);
-				for (int i = 0; i < crashes && this.lives > 0
+		for (int i = 0; i < crashes && this.lives > 0
 				&& !this.ship.isDestroyed(); i++) {
 			this.screenShake.trigger();
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
