@@ -4,7 +4,11 @@ import java.awt.Color;
 import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 
+import skilltree.ShardConverter;
 import skilltree.ShardType;
+import skilltree.ShardWallet;
+
+/**
 
 /**
  * Shard converter page (GOG-52), opened with the CONVERT button on the
@@ -15,8 +19,7 @@ import skilltree.ShardType;
  * shards animated, and how many are given and received.
  *
  * Upgrading (small to big) costs 5 for 1 per rarity step; breaking down
- * (big to small) gives 3 per step. This screen is UI only: CONVERT shows
- * a message until the real conversion (GOG-90) exists.
+ * (big to small) gives 3 per step ({@link ShardConverter}, GOG-90).
  *
  * @author GoG - Progression (GOG-70)
  */
@@ -41,10 +44,6 @@ public class ConverterScreen extends Screen {
 	private static final int AMOUNT_TOP = 376;
 	/** Height of the amount row buttons. */
 	private static final int BUTTON_HEIGHT = 28;
-	/** Shards needed for one of the next rarity when upgrading. */
-	private static final int UP_RATE = 5;
-	/** Shards received from one of the rarity above when breaking down. */
-	private static final int DOWN_RATE = 3;
 	/** Colour of unselected borders. */
 	private static final Color BORDER = new Color(70, 70, 70);
 	/** Dimmed text. */
@@ -123,7 +122,7 @@ public class ConverterScreen extends Screen {
 		draw();
 	}
 
-	// --- Conversion preview (display only; the real rules are GOG-90) ---
+	// --- Conversion (rules in ShardConverter, GOG-90) ---
 
 	/** @return Rarity steps from GIVE to GET; positive = upgrade. */
 	private int steps() {
@@ -132,17 +131,18 @@ public class ConverterScreen extends Screen {
 
 	/** @return Shards given for one conversion. */
 	private int givePerConversion() {
-		return steps() > 0 ? (int) Math.pow(UP_RATE, steps()) : 1;
+		return ShardConverter.givePerConversion(this.give, this.get);
 	}
 
 	/** @return Shards received for one conversion. */
 	private int getPerConversion() {
-		return steps() > 0 ? 1 : (int) Math.pow(DOWN_RATE, -steps());
+		return ShardConverter.getPerConversion(this.give, this.get);
 	}
 
 	/** @return Most conversions the player can afford, at least 1. */
 	private int maxAmount() {
-		return Math.max(1, ShardBar.count(this.give) / givePerConversion());
+		return Math.max(1, ShardConverter.maxConversions(
+				ShardWallet.getInstance(), this.give, this.get));
 	}
 
 	/** @return True if the player has enough shards to give. */
@@ -255,15 +255,32 @@ public class ConverterScreen extends Screen {
 			case "MAX":
 				this.amount = maxAmount();
 				this.message = null;
-				break;
+								break;
 			default:
-				this.message = canAfford() ? "Converting comes with GOG-90"
-						: "Not enough " + this.give.getDisplayName()
-								+ " shards (need "
-								+ givePerConversion() * this.amount + ")";
+				convert();
 				break;
 		}
 	}
+
+	/** Converts the chosen amount and says what happened. */
+	private void convert() {
+		int given = givePerConversion() * this.amount;
+		int received = getPerConversion() * this.amount;
+		if (!canAfford()) {
+			this.message = "Not enough " + this.give.getDisplayName()
+					+ " shards (need " + given + ")";
+		} else if (ShardConverter.convert(ShardWallet.getInstance(),
+				this.give, this.get, this.amount)) {
+			this.message = "Converted " + given + " "
+					+ this.give.getDisplayName() + " into " + received + " "
+					+ this.get.getDisplayName();
+			this.amount = 1;
+		} else {
+			this.message = "Couldn't save - try again";
+		}
+	}
+
+	// --- Layout ---
 
 	// --- Layout ---
 
@@ -442,9 +459,9 @@ public class ConverterScreen extends Screen {
 	private void drawMessage() {
 		String text;
 		Color color;
-		if (this.message != null) {
+				if (this.message != null) {
 			text = this.message;
-			color = this.message.startsWith("Not") ? RED : Color.GREEN;
+			color = this.message.startsWith("Converted") ? Color.GREEN : RED;
 		} else {
 			text = "Up: 5 = 1 - Down: 1 = 3 - can't be undone";
 			color = DIM;
