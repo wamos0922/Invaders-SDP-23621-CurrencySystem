@@ -34,10 +34,10 @@ public final class StoryMusic {
     private StoryMusic() { }
 
     /**
-     * Choose the regular gameplay soundtrack without starting audio.
+     * Choose the gameplay soundtrack without starting audio.
      * Package-independent and testable without a sound device.
      *
-     * @return The WAV filename, or null if this level has no regular BGM yet.
+     * @return The WAV filename, or null if the level is unsupported.
      */
     public static String trackForLevel(int level) {
         if (level >= 1 && level <= 9) {
@@ -64,7 +64,81 @@ public final class StoryMusic {
         if (level >= 36 && level <= 39) {
             return "backup.wav";
         }
+        if (level == 40) {
+            return "finalBoss.wav";
+        }
         return null;
+    }
+
+    /** Select a cutscene soundtrack without starting audio. */
+    public static String trackForPanel(int panel, int dialogueLine) {
+        switch (panel) {
+            case 1: case 2: case 3: case 4: case 5:
+            case 12:
+                return "base.wav";
+            case 6:
+                return null;
+            case 7:
+                return "discovery.wav";
+            case 8: case 17: case 19: case 20:
+                return "cornered.wav";
+            case 9:
+                return "panel9.wav";
+            case 10: case 11:
+                return "Blorp.wav";
+            case 13:
+                // panel.13.3: "Suddenly, a massive alarm began..."
+                return dialogueLine >= 3 ? "alarm.wav" : "base.wav";
+            case 14: case 15: case 16:
+                return "escaped.wav";
+            case 18:
+                return "fast.wav";
+            case 21: case 22: case 23: case 26:
+                return "backup.wav";
+            case 24: case 25:
+                return "storytime.wav";
+            case 27:
+                // Exact filename uses capital B.
+                return "finalBoss.wav";
+            case 28:
+                return "celebration.wav";
+            case 29: case 30: case 31:
+                return "lastpush.wav";
+            case 32: case 33:
+                return "ending.wav";
+            default:
+                return null;
+        }
+    }
+
+    /** Shared starting offset for both gameplay and cutscene cues. */
+    private static int startSecondsForTrack(String filename) {
+        if ("backup.wav".equals(filename)) {
+            return 53;
+        }
+        if ("ending.wav".equals(filename)) {
+            return 71;
+        }
+        return 0;
+    }
+
+    /** Starting offset (seconds) for the selected gameplay cue. */
+    public static int startSecondsForLevel(int level) {
+        return startSecondsForTrack(trackForLevel(level));
+    }
+
+    /** Starting offset (seconds) for the selected cutscene cue. */
+    public static int startSecondsForPanel(int panel, int dialogueLine) {
+        return startSecondsForTrack(trackForPanel(panel, dialogueLine));
+    }
+
+    /**
+     * Keep Panel 26 music across normal, successful Story Mode clears of
+     * Levels 36-39 only. TitleScreen stops it if the player chooses Exit.
+     */
+    public static boolean shouldContinueAfterLevel(int level, boolean storyMode,
+                                                   boolean clearedNormally) {
+        return storyMode && clearedNormally && level >= 36 && level <= 39;
     }
 
     /**
@@ -72,78 +146,18 @@ public final class StoryMusic {
      * This method is NOT used by Endless Mode or Daily Challenges.
      */
     public static void playForLevel(int level) {
-        if (level == 40) {
-            // Continue Panel 27 without restarting the final boss song.
-            playForPanel(27, 1);
-            return;
-        }
-        if (level >= 36 && level <= 39) {
-            // Preserve the live Panel 26 cue and its playback position.
-            // If a player loads Level 36 directly, begin at 0:53 instead.
-            play("backup.wav", 53);
-            return;
-        }
-        String track = trackForLevel(level);
-        if (track == null) {
-            // Out-of-range levels have no gameplay track.
-            stop();
-        } else {
-            play(track, 0);
-        }
+        playCue(trackForLevel(level));
     }
 
     public static void playForPanel(int panel, int dialogueLine) {
-        switch (panel) {
-            case 1: case 2: case 3: case 4: case 5:
-            case 12:
-                play("base.wav", 0);
-                break;
-            case 6:
-                stop();
-                break;
-            case 7:
-                play("discovery.wav", 0);
-                break;
-            case 8: case 17: case 19: case 20:
-                play("cornered.wav", 0);
-                break;
-            case 9:
-                play("panel9.wav", 0);
-                break;
-            case 10: case 11:
-                play("Blorp.wav", 0);
-                break;
-            case 13:
-                // panel.13.3: "Suddenly, a massive alarm began..."
-                play(dialogueLine >= 3 ? "alarm.wav" : "base.wav", 0);
-                break;
-            case 14: case 15: case 16:
-                play("escaped.wav", 0);
-                break;
-            case 18:
-                play("fast.wav", 0);
-                break;
-            case 21: case 22: case 23: case 26:
-                play("backup.wav", 53);
-                break;
-            case 24: case 25:
-                play("storytime.wav", 0);
-                break;
-            case 27:
-                // Exact filename uses capital B.
-                play("finalBoss.wav", 0);
-                break;
-            case 28:
-                play("celebration.wav", 0);
-                break;
-            case 29: case 30: case 31:
-                play("lastpush.wav", 0);
-                break;
-            case 32: case 33:
-                play("ending.wav", 71);
-                break;
-            default:
-                stop();
+        playCue(trackForPanel(panel, dialogueLine));
+    }
+
+    private static void playCue(String track) {
+        if (track == null) {
+            stop();
+        } else {
+            play(track, startSecondsForTrack(track));
         }
     }
 

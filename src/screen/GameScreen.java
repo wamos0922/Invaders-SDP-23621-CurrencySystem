@@ -450,7 +450,7 @@ public class GameScreen extends Screen {
 		this.ship.setSkinColor(this.skin.getColor());
 		// Ship look chosen in Customize (A1): only the sprite changes.
 		shop.ShapeSkin shape = PurchaseManager.getInstance()
-								.getSelectedShape(this.ship.getType());
+				.getSelectedShape(this.ship.getType());
 		this.ship.setShapeSprite(shape == null ? null : shape.getSprite());
 		// Skill tree nodes unlocked for this ship (GOG-89).
 		this.skills = SkillEffects.forShip(this.ship.getType());
@@ -545,15 +545,21 @@ public class GameScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
+		boolean clearedNormally = false;
 		try {
 			super.run();
+			// An interrupted or otherwise abnormal exit must not retain music.
+			clearedNormally = !this.isRunning && this.levelFinished
+					&& !this.gameOverActive && this.lives > 0;
 		} finally {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.lightningChain);
-			// Stop any leftover story soundtrack whenever gameplay exits:
-			// victory, game over, pause-menu quit, or an abnormal exit.
-			// Panel 27 music is allowed during Level 40, but not beyond it.
-			StoryMusic.stop();
+			// Only successful Story Mode clears of Levels 36-39 hand off music.
+			if (!StoryMusic.shouldContinueAfterLevel(this.level,
+					!EndlessMode.isEnabled() && !DailyChallenge.isRunning(),
+					clearedNormally)) {
+				StoryMusic.stop();
+			}
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -739,10 +745,12 @@ public class GameScreen extends Screen {
 			if (isCleared && this.lives > 0) {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
-// Keep Panel 26 music alive across victorious Levels 36-39.
-if (this.level < 36 || this.level > 39)
-StoryMusic.stop();
-SoundManager.getInstance().playSfx(Sound.VICTORY);
+				// Keep Panel 26 music alive across victorious Story Levels 36-39.
+				if (!StoryMusic.shouldContinueAfterLevel(this.level,
+						!EndlessMode.isEnabled() && !DailyChallenge.isRunning(), true)) {
+					StoryMusic.stop();
+				}
+				SoundManager.getInstance().playSfx(Sound.VICTORY);
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
 				this.pendingDiamonds += this.meteors.collectRemaining(); // VFX TEAM (Effection): collects remaining diamonds from the meteor and adds them to pending
@@ -1004,7 +1012,7 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 			this.ship.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the black hole scene (GOG-74).
-				if (this.paused && this.blackHole != null)
+		if (this.paused && this.blackHole != null)
 			this.blackHole.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		// Nor the Armor skill shields (GOG-89).
@@ -1350,7 +1358,7 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 						startVulnerable();
 					} else if (bullet.isFreezing()) {
 						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
-												if (this.ship.freeze())
+						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
 					} else if (!this.ship.isDestroyed()
 							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
@@ -1553,7 +1561,7 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 			double dx = this.ship.getPositionX() + this.ship.getWidth() / 2.0
 					- blast.x;
 			double dy = this.ship.getPositionY() + this.ship.getHeight() / 2.0
-										- blast.y;
+					- blast.y;
 			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
 				continue;
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
@@ -1584,7 +1592,7 @@ SoundManager.getInstance().playSfx(Sound.VICTORY);
 				|| this.ship.isDestroyed() || this.lives <= 0)
 			return;
 		int crashes = this.enemyShipFormation.takeDropHits(this.ship);
-				for (int i = 0; i < crashes && this.lives > 0
+		for (int i = 0; i < crashes && this.lives > 0
 				&& !this.ship.isDestroyed(); i++) {
 			this.screenShake.trigger();
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
