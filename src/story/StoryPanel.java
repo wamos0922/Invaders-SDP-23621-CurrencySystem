@@ -342,12 +342,12 @@ public class StoryPanel extends JPanel {
 
     /**
      * Optional metallic spanner-drop effect on panel 6, dialogue 3.
-     * File to provide: res/sounds/wrench_drop.wav.
+     * File to provide: res/sounds/wrench.wav.
      */
     private void playWrenchDrop() {
-        File file = new File("res/sounds/wrench_drop.wav");
+        File file = new File("res/sounds/wrench.wav");
         if (!file.isFile()) {
-            System.err.println("[STORY AUDIO] Optional wrench_drop.wav not found");
+            System.err.println("[STORY AUDIO] Optional wrench.wav not found");
             return;
         }
         try (AudioInputStream stream = AudioSystem.getAudioInputStream(file)) {

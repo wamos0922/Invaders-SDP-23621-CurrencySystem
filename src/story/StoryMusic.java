@@ -26,7 +26,7 @@ import java.io.IOException;
  *   Levels 31-35: FourthPhase.wav
  * Levels 36-39 continue backup.wav at 0:53 from Panel 26.
  * Boss Level 40 continues finalBoss.wav from Panel 27.
- * Boss levels 10, 20 and 30 have no custom soundtrack yet.
+ * Boss levels 10, 20 and 30 each have their own looping soundtrack.
  */
 public final class StoryMusic {
     private static Playback active;
@@ -43,11 +43,20 @@ public final class StoryMusic {
         if (level >= 1 && level <= 9) {
             return "FirstPhase.wav";
         }
+        if (level == 10) {
+            return "Boss10.wav";
+        }
         if (level >= 11 && level <= 19) {
             return "SecondPhase.wav";
         }
+        if (level == 20) {
+            return "Boss20.wav";
+        }
         if (level >= 21 && level <= 29) {
             return "ThirdPhase.wav";
+        }
+        if (level == 30) {
+            return "Boss30.wav";
         }
         if (level >= 31 && level <= 35) {
             return "FourthPhase.wav";
@@ -76,7 +85,7 @@ public final class StoryMusic {
         }
         String track = trackForLevel(level);
         if (track == null) {
-            // Boss levels 10, 20 and 30 have no custom gameplay track yet.
+            // Out-of-range levels have no gameplay track.
             stop();
         } else {
             play(track, 0);
