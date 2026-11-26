@@ -27,6 +27,12 @@ public class Bullet extends Entity {
 	private boolean freezing;
 	/** True for a Stinger vulnerable bullet (GoG, GOG-86). */
 	private boolean vulnerable;
+	/**
+	 * The bullet disappears once its top passes this height: short-range
+	 * shots such as the Ring Dreadnought's shotgun (GoG, GOG-76). No limit
+	 * by default.
+	 */
+	private int maxY = Integer.MAX_VALUE;
 
 	/**
 	 * Constructor, establishes the bullet's properties.
@@ -149,6 +155,22 @@ public class Bullet extends Entity {
 	 */
 	public final boolean isVulnerable() {
 		return this.vulnerable;
+	}
+
+	/**
+	 * Sets how far down the bullet flies before it disappears (GoG,
+	 * GOG-76). {@link Integer#MAX_VALUE} means no limit.
+	 *
+	 * @param maxY
+	 *            Height past which the bullet is removed.
+	 */
+	public final void setMaxY(final int maxY) {
+		this.maxY = maxY;
+	}
+
+	/** @return Height past which the bullet is removed (GoG, GOG-76). */
+	public final int getMaxY() {
+		return this.maxY;
 	}
 
 	/**

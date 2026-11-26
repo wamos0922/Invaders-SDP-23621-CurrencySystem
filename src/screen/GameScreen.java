@@ -47,6 +47,7 @@ import entity.EnemyType;
 import entity.FinalBoss;
 import entity.TempestQueen;
 import entity.EnemyShipFormation;
+import entity.RingDreadnought;
 import entity.Entity;
 import entity.Particle;
 import entity.Ship;
@@ -427,12 +428,14 @@ public class GameScreen extends Screen {
 				&& this.level <= 40
 				&& this.level % 10 == 0) {
 			// GOG-74: level 10 is the AI Warship; GOG-75: level 20 is the
-			// Tempest Queen; the other boss levels keep the placeholder
-			// until their bosses are built.
+			// Tempest Queen; GOG-76: level 30 is the Ring Dreadnought;
+			// level 40 keeps the placeholder until its boss is built.
 			if (this.level == 10)
 				this.midBoss = new AIWarship(this.width / 2 - 24, 100);
 			else if (this.level == 20)
 				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
+			else if (this.level == 30)
+				this.midBoss = new RingDreadnought(this.width / 2 - 24, 100);
 			else
 				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
 						DrawManager.SpriteType.FinalBoss1);
@@ -1269,6 +1272,7 @@ public class GameScreen extends Screen {
 			bullet.update();
 			if (bullet.getPositionY() < SEPARATION_LINE_HEIGHT
 					|| bullet.getPositionY() > this.height
+					|| bullet.getPositionY() > bullet.getMaxY() // short range (GOG-76)
 					|| bullet.getPositionX() + bullet.getWidth() < 0
 					|| bullet.getPositionX() > this.width)
 				recyclable.add(bullet);
