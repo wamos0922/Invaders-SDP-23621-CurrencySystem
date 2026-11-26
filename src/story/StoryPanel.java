@@ -1,4 +1,3 @@
-
 package story;
 
 import javax.imageio.ImageIO;
@@ -114,6 +113,7 @@ public class StoryPanel extends JPanel {
     private boolean skipHovered;
 
     private Clip typingSound;
+    private Clip wrenchDropSound;
 
     // =========================================
     // CONSTRUCTORS
@@ -160,6 +160,7 @@ public class StoryPanel extends JPanel {
         );
 
         loadTypingSound();
+        engine.soundEngine.SoundManager.getInstance().stopBgm();
         loadPanel(firstPanel);
         setupControls();
 
@@ -339,6 +340,28 @@ public class StoryPanel extends JPanel {
         }
     }
 
+    /**
+     * Optional metallic spanner-drop effect on panel 6, dialogue 3.
+     * File to provide: res/sounds/wrench_drop.wav.
+     */
+    private void playWrenchDrop() {
+        File file = new File("res/sounds/wrench_drop.wav");
+        if (!file.isFile()) {
+            System.err.println("[STORY AUDIO] Optional wrench_drop.wav not found");
+            return;
+        }
+        try (AudioInputStream stream = AudioSystem.getAudioInputStream(file)) {
+            if (wrenchDropSound != null) {
+                wrenchDropSound.close();
+            }
+            wrenchDropSound = AudioSystem.getClip();
+            wrenchDropSound.open(stream);
+            wrenchDropSound.start();
+        } catch (Exception exception) {
+            System.err.println("[STORY AUDIO] Wrench SFX: " + exception.getMessage());
+        }
+    }
+
     // =========================================
     // LOAD STORY PANEL
     // =========================================
@@ -359,6 +382,7 @@ public class StoryPanel extends JPanel {
         // Load background corresponding to this panel.
         currentSceneImage = loadSceneImage(number);
 
+        StoryMusic.playForPanel(panelNumber, dialogueLine);
         startTyping();
     }
 
@@ -600,6 +624,10 @@ public class StoryPanel extends JPanel {
                 loadPanel32GoodbyeBackground();
             }
 
+            StoryMusic.playForPanel(panelNumber, dialogueLine);
+            if (panelNumber == 6 && dialogueLine == 3) {
+                playWrenchDrop();
+            }
             startTyping();
             return;
         }
@@ -1103,6 +1131,16 @@ public class StoryPanel extends JPanel {
 
         typingTimer.stop();
         animationTimer.stop();
+
+        // Panel 27 continues to the Level 40 boss; all other cutscenes stop.
+        if (!(panelNumber == 27 && lastPanel == 27)) {
+            StoryMusic.stop();
+        }
+        if (wrenchDropSound != null) {
+            wrenchDropSound.stop();
+            wrenchDropSound.close();
+            wrenchDropSound = null;
+        }
 
         if (typingSound != null) {
 

@@ -124,12 +124,9 @@ public final class ShardWallet {
 	 *         the wallet could not be saved.
 	 */
 	public boolean apply(final int[] change) {
-		for (ShardType type : ShardType.values()) {
-			// long, so a big change can't wrap around past the int limit.
-			long after = (long) get(type) + change[type.ordinal()];
-			if (after < 0 || after > Integer.MAX_VALUE)
+		for (ShardType type : ShardType.values())
+			if (get(type) + change[type.ordinal()] < 0)
 				return false;
-		}
 		Map<ShardType, Integer> before =
 				new EnumMap<ShardType, Integer>(this.counts);
 		for (ShardType type : ShardType.values())

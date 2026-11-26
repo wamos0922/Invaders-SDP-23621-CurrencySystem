@@ -26,6 +26,7 @@ import entity.Ship;
 import item.ItemSystem;
 import screen.*;
 import story.NameEntryPanel;
+import story.StoryMusic;
 
 /**
  * Main game loop. Selects a persistent player profile before the title menu.
@@ -122,6 +123,7 @@ public final class Core {
 
 			switch (returnCode) {
 				case 1:
+					StoryMusic.stop();
 					currentScreen =
 							new TitleScreen(width, height, FPS);
 
@@ -236,8 +238,8 @@ public final class Core {
 								}
 							} else {
 								showSaveError(
-											"Could not bank old Story diamonds",
-											new IOException("Please check whether your save folder is writable."));
+										"Could not bank old Story diamonds",
+										new IOException("Please check whether your save folder is writable."));
 								returnCode = 1;
 								break;
 							}
@@ -359,15 +361,24 @@ public final class Core {
 									break;
 								}
 
-								// Preserve boss rewards and cutscenes.
+								// Level 40 is special: finish its ending panels before
+								// showing any reward or completion screen.
+								boolean finalStoryLevel =
+										clearedLevel == NUM_LEVELS;
+
+								if (finalStoryLevel) {
+									StoryMode.onLevelCompleted(
+											frame,
+											clearedLevel);
+								}
+
+								// Other levels show special rewards before
+								// their Level Completed screen and cutscene.
+								// Level 40 shows this AFTER its ending cutscene.
 								showLevelReward(
 										clearedLevel,
 										width,
 										height);
-
-								StoryMode.onLevelCompleted(
-										frame,
-										clearedLevel);
 
 								// Save real progression before showing
 								// the Continue / Exit screen.
@@ -410,8 +421,21 @@ public final class Core {
 
 								frame.setScreen(currentScreen);
 
-								if (((StoryLevelCompleteScreen)
-										currentScreen).didExit()) {
+								// Remember Continue/Exit, but still play post-level
+								// story panels even if the player chooses Exit.
+								boolean choseExit =
+										((StoryLevelCompleteScreen)
+												currentScreen).didExit();
+
+								// Normal milestone cutscenes run AFTER Level Completed.
+								// Ordinary levels with no cutscene are unaffected.
+								if (!finalStoryLevel) {
+									StoryMode.onLevelCompleted(
+											frame,
+											clearedLevel);
+								}
+
+								if (choseExit) {
 									exitStoryAfterClear = true;
 									break;
 								}

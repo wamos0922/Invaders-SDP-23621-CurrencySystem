@@ -15,6 +15,7 @@ import java.util.Set;
 
 import engine.soundEngine.Sound;
 import engine.soundEngine.SoundManager;
+import story.StoryMusic;
 import engine.CoinDropManager;
 import engine.Cooldown;
 import engine.Core;
@@ -241,8 +242,8 @@ public class GameScreen extends Screen {
 	private int bulletsShot;
 	/** Total ships destroyed by the player. */
 	private int shipsDestroyed;
-    /** Total coins collected by the player. */
-    private int coinsCollected;
+	/** Total coins collected by the player. */
+	private int coinsCollected;
 	/** Moment the game starts. */
 	private long gameStartTime;
 	/** Checks if the level is finished. */
@@ -352,8 +353,8 @@ public class GameScreen extends Screen {
 	 *            Frames per second, frame rate at which the game is run.
 	 */
 	public GameScreen(final GameState gameState,
-					  final GameSettings gameSettings, final boolean bonusLife,
-					  final int width, final int height, final int fps) {
+	                  final GameSettings gameSettings, final boolean bonusLife,
+	                  final int width, final int height, final int fps) {
 		super(width, height, fps);
 
 		this.gameSettings = gameSettings;
@@ -372,7 +373,7 @@ public class GameScreen extends Screen {
 		this.shipsDestroyed = gameState.getShipsDestroyed();
 		this.pendingDiamonds = gameState.getPendingDiamonds();
 		this.levelsCompletedRun = gameState.getLevelsCompletedRun();
-        this.coinsCollected = gameState.getCoinsCollected();
+		this.coinsCollected = gameState.getCoinsCollected();
 		this.tookDamage = false;
 
 
@@ -392,7 +393,22 @@ public class GameScreen extends Screen {
 
 	public final void initialize() {
 		super.initialize();
-		SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+		// GOG-35: The regular gameplay BGM is only for Endless Mode
+		// and Daily Challenges. Story Mode uses panel-specific cutscene music.
+		if (EndlessMode.isEnabled() || DailyChallenge.isRunning()) {
+			StoryMusic.stop();
+			SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+		} else {
+			SoundManager.getInstance().stopBgm();
+			if (this.level == 40) {
+				// Continue the Panel 27 soundtrack without restarting it.
+				// Starting directly at level 40 will start finalBoss.wav.
+				StoryMusic.playForPanel(27, 1);
+			} else {
+				// No cutscene BGM is allowed during Story Levels 1-39.
+				StoryMusic.stop();
+			}
+		}
 
 		// Initialize the player in both boss and normal stages.
 		this.ship = new Ship(this.width / 2, this.height - SHIP_ROW_FROM_BOTTOM,
@@ -514,6 +530,10 @@ public class GameScreen extends Screen {
 		} finally {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.lightningChain);
+			// Stop any leftover story soundtrack whenever gameplay exits:
+			// victory, game over, pause-menu quit, or an abnormal exit.
+			// Panel 27 music is allowed during Level 40, but not beyond it.
+			StoryMusic.stop();
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -696,6 +716,7 @@ public class GameScreen extends Screen {
 			if (isCleared && this.lives > 0) {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
+				StoryMusic.stop();
 				SoundManager.getInstance().playSfx(Sound.VICTORY);
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
@@ -718,7 +739,7 @@ public class GameScreen extends Screen {
 				if (!DailyChallenge.isRunning())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordLevelCompleted(this.level));
-                showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
+				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
 
 				// Level 10 / game won only count in story mode (GOG-7).
 				if (!EndlessMode.isEnabled() && !DailyChallenge.isRunning())
@@ -738,7 +759,7 @@ public class GameScreen extends Screen {
 
 		if (this.levelFinished && this.screenFinishedCooldown.checkFinished()
 				&& (this.blackHole == null
-						|| this.blackHole.isFinished(System.currentTimeMillis()))
+				|| this.blackHole.isFinished(System.currentTimeMillis()))
 				&& this.unlockedAchievement == null
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
@@ -753,6 +774,8 @@ public class GameScreen extends Screen {
 	 */
 	private void startGameOverSequence() {
 		SoundManager.getInstance().stopBgm();
+		// The final boss music stops as soon as the player runs out of lives.
+		StoryMusic.stop();
 		SoundManager.getInstance().playSfx(Sound.GAME_OVER);
 		this.levelFinished = true;
 		this.gameOverActive = true;
@@ -928,6 +951,8 @@ public class GameScreen extends Screen {
 				restartLevel();
 				break;
 			case QUIT:
+				// Stop the custom final boss soundtrack immediately on quit.
+				StoryMusic.stop();
 				// No dedicated "abandon" path exists in the screen flow,
 				// but ending the run the same way running out of lives
 				// does takes us straight to the existing score screen,
@@ -1089,7 +1114,7 @@ public class GameScreen extends Screen {
 			long left = Math.max(0, this.vulnerableUntil
 					- System.currentTimeMillis());
 			drawManager.drawCenteredRegularString(this, "VULNERABLE "
-					+ ((left + 999) / 1000), SEPARATION_LINE_HEIGHT + 20,
+							+ ((left + 999) / 1000), SEPARATION_LINE_HEIGHT + 20,
 					EnemyType.VULNERABLE_BULLET_COLOR);
 		}
 		drawManager.drawLevel(this, this.level);
@@ -1293,7 +1318,7 @@ public class GameScreen extends Screen {
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
 						this.lives--;
-                        PlayerSounds.playHit(this.lives); // <-- Ajout du son
+						PlayerSounds.playHit(this.lives); // <-- Ajout du son
 						this.tookDamage = true; // Survivor tiers (Mantis)
 						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
 						this.logger.info("Hit on player ship, " + this.lives
@@ -1463,7 +1488,7 @@ public class GameScreen extends Screen {
 	 * @return The Stinger bullet hit, or null.
 	 */
 	private Bullet findVulnerableBulletHit(final Bullet playerBullet,
-			final Set<Bullet> recyclable) {
+	                                       final Set<Bullet> recyclable) {
 		for (Bullet other : this.bullets)
 			if (other.isVulnerable() && other.getSpeed() > 0
 					&& !recyclable.contains(other)
@@ -1759,7 +1784,7 @@ public class GameScreen extends Screen {
 	 *            Whether it is the bonus ship (uses its own popup style).
 	 */
 	private void queueScoreBoostPopup(final EnemyShip enemy,
-									  final boolean bonusShip) {
+	                                  final boolean bonusShip) {
 		int extra = this.items.scoreBonus(enemy.getPointValue());
 		if (extra <= 0)
 			return;
