@@ -107,11 +107,20 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	private final List<Point> detonations = new ArrayList<Point>();
 	/** Centres where Mites died, not yet handled by the game. */
 	private final List<Point> miteBooms = new ArrayList<Point>();
+	/** Player centre for aimed shots (GOG-85); negative until known. */
+	private int targetX = -1;
+	/** Player centre for aimed shots (GOG-85); negative until known. */
+	private int targetY = -1;
 
-	/** A Comet flying in a straight line to where the player was. */
+	/**
+	 * A Comet flying in a straight line to where the player was, or an
+	 * Orbit Fighter falling straight down (GOG-85).
+	 */
 	private static final class Dive {
-		/** The Comet. */
+		/** The Comet or Orbit Fighter. */
 		private final EnemyShip ship;
+		/** True for a falling Orbit Fighter, false for a Comet. */
+		private final boolean drop;
 		/** Exact position of its centre (sub-pixel). */
 		private double centerX;
 		/** Exact position of its centre (sub-pixel). */
@@ -121,8 +130,10 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 		/** Where it explodes: the player's centre when it dove. */
 		private final int targetY;
 
-		Dive(final EnemyShip ship, final int targetX, final int targetY) {
+		Dive(final EnemyShip ship, final int targetX, final int targetY,
+				final boolean drop) {
 			this.ship = ship;
+			this.drop = drop;
 			this.centerX = ship.getPositionX() + ship.getWidth() / 2.0;
 			this.centerY = ship.getPositionY() + ship.getHeight() / 2.0;
 			this.targetX = targetX;
@@ -307,15 +318,78 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 *         the formation); false for every other case.
 	 */
 	public final boolean startDive(final EnemyShip enemy, final Entity target) {
-		if (enemy.getType() != EnemyType.COMET || enemy.isDestroyed()
-				|| isDiving(enemy))
+		if (enemy.isDestroyed() || isDiving(enemy))
+			return false;
+		if (enemy.getType() == EnemyType.ORBIT_FIGHTER)
+			return startDrop(enemy);
+		if (enemy.getType() != EnemyType.COMET)
 			return false;
 		detach(enemy);
 		this.dives.add(new Dive(enemy,
 				target.getPositionX() + target.getWidth() / 2,
-				target.getPositionY() + target.getHeight() / 2));
+				target.getPositionY() + target.getHeight() / 2, false));
 		this.logger.info("A Comet was hit and dives at the player.");
 		return true;
+	}
+
+	/**
+	 * Orbit Fighter drop (GOG-85): the first hit sends it out of the
+	 * formation, falling straight down until it leaves the screen. The game
+	 * checks it against the player with {@link #takeDropHits(Entity)}.
+	 */
+	private boolean startDrop(final EnemyShip enemy) {
+		detach(enemy);
+		int bottom = this.screen != null ? this.screen.getHeight() : 1000;
+		this.dives.add(new Dive(enemy,
+				enemy.getPositionX() + enemy.getWidth() / 2,
+				bottom + enemy.getHeight(), true));
+		this.logger.info("An Orbit Fighter was hit and drops.");
+		return true;
+	}
+
+	/**
+	 * Falling Orbit Fighters that touch the player crash into it (GOG-85):
+	 * each one that overlaps the ship is destroyed. The game takes a life
+	 * for each (a shield item can block it).
+	 *
+	 * @param player
+	 *            Player ship.
+	 * @return How many falling Orbit Fighters hit the ship.
+	 */
+	public final int takeDropHits(final Entity player) {
+		int hits = 0;
+		for (Dive dive : this.dives) {
+			EnemyShip ship = dive.ship;
+			if (!dive.drop || ship.isDestroyed())
+				continue;
+			boolean overlap = ship.getPositionX() < player.getPositionX()
+					+ player.getWidth()
+					&& player.getPositionX() < ship.getPositionX()
+							+ ship.getWidth()
+					&& ship.getPositionY() < player.getPositionY()
+							+ player.getHeight()
+					&& player.getPositionY() < ship.getPositionY()
+							+ ship.getHeight();
+			if (!overlap)
+				continue;
+			ship.destroy();
+			this.shipCount--;
+			hits++;
+		}
+		return hits;
+	}
+
+	/**
+	 * @param enemy
+	 *            Enemy to check.
+	 * @return True if it is an Orbit Fighter falling out of the formation
+	 *         (GOG-85).
+	 */
+	public final boolean isDropping(final EnemyShip enemy) {
+		for (Dive dive : this.dives)
+			if (dive.ship == enemy && dive.drop)
+				return true;
+		return false;
 	}
 
 	/**
@@ -346,20 +420,25 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 					it.remove();
 				continue;
 			}
+			double speed = dive.drop ? EnemyType.FIGHTER_DROP_SPEED
+					: EnemyType.COMET_DIVE_SPEED;
 			double dx = dive.targetX - dive.centerX;
 			double dy = dive.targetY - dive.centerY;
 			double distance = Math.sqrt(dx * dx + dy * dy);
-			if (distance <= EnemyType.COMET_DIVE_SPEED) {
+			if (distance <= speed) {
 				dive.centerX = dive.targetX;
 				dive.centerY = dive.targetY;
 				placeDive(dive);
 				dive.ship.destroy();
 				this.shipCount--;
-				this.detonations.add(new Point(dive.targetX, dive.targetY));
+				// A Comet explodes there; an Orbit Fighter just fell off
+				// the bottom of the screen (GOG-85).
+				if (!dive.drop)
+					this.detonations.add(new Point(dive.targetX, dive.targetY));
 				continue;
 			}
-			dive.centerX += dx / distance * EnemyType.COMET_DIVE_SPEED;
-			dive.centerY += dy / distance * EnemyType.COMET_DIVE_SPEED;
+			dive.centerX += dx / distance * speed;
+			dive.centerY += dy / distance * speed;
 			placeDive(dive);
 			dive.ship.update();
 		}
@@ -419,7 +498,7 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	/** @return True while a Comet is diving (GOG-86). */
 	public final boolean isCometDiving() {
 		for (Dive dive : this.dives)
-			if (!dive.ship.isDestroyed())
+			if (!dive.drop && !dive.ship.isDestroyed())
 				return true;
 		return false;
 	}
@@ -683,8 +762,59 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 
 		if (this.shootingCooldown.checkFinished()) {
 			this.shootingCooldown.reset();
-			fireShot(shooter, bullets);
+			fireShot(shooter, bullets, this.targetX, this.targetY);
 		}
+	}
+
+	/**
+	 * Tells the formation where the player is, for aimed shots (Halo
+	 * Lancer sniper and Hex Sentinel reflections, GOG-85).
+	 *
+	 * @param x
+	 *            Player ship centre.
+	 * @param y
+	 *            Player ship centre.
+	 */
+	public final void setTarget(final int x, final int y) {
+		this.targetX = x;
+		this.targetY = y;
+	}
+
+	/**
+	 * Hex Sentinel reflecting shield (GOG-85): the player bullet that broke
+	 * the shield comes back down as an enemy bullet aimed at the player.
+	 *
+	 * @param hitBy
+	 *            Player bullet the shield blocked.
+	 * @param bullets
+	 *            Where the reflected bullet is added.
+	 */
+	public final void reflectShot(final Bullet hitBy,
+			final Set<Bullet> bullets) {
+		bullets.add(aimedBullet(hitBy.getPositionX() + hitBy.getWidth() / 2,
+				hitBy.getPositionY() + hitBy.getHeight(), this.targetX,
+				this.targetY, EnemyType.REFLECT_BULLET_SPEED));
+	}
+
+	/**
+	 * @return An enemy bullet from (fromX, fromY) towards (toX, toY) at
+	 *         the given total speed, always moving down. With no target
+	 *         below it, the bullet goes straight down.
+	 */
+	private static Bullet aimedBullet(final int fromX, final int fromY,
+			final int toX, final int toY, final int speed) {
+		int speedX = 0;
+		int speedY = speed;
+		if (toX >= 0 && toY > fromY) {
+			double dx = toX - fromX;
+			double dy = toY - fromY;
+			double length = Math.sqrt(dx * dx + dy * dy);
+			speedX = (int) Math.round(dx / length * speed);
+			speedY = Math.max(1, (int) Math.round(dy / length * speed));
+		}
+		Bullet bullet = BulletPool.getBullet(fromX, fromY, speedY);
+		bullet.setSpeedX(speedX);
+		return bullet;
 	}
 
 	/**
@@ -699,9 +829,33 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 */
 	public static void fireShot(final EnemyShip shooter,
 			final Set<Bullet> bullets) {
+		fireShot(shooter, bullets, -1, -1);
+	}
+
+	/**
+	 * Fires one shot from an enemy, aiming where the type needs it: a Halo
+	 * Lancer's sniper bullet is fast and goes straight at the player
+	 * (GOG-85). Without a target it fires straight down.
+	 *
+	 * @param shooter
+	 *            Enemy that shoots.
+	 * @param bullets
+	 *            Bullets in play, the new ones are added here.
+	 * @param targetX
+	 *            Player centre, negative if unknown.
+	 * @param targetY
+	 *            Player centre, negative if unknown.
+	 */
+	public static void fireShot(final EnemyShip shooter,
+			final Set<Bullet> bullets, final int targetX, final int targetY) {
 		int centerX = shooter.getPositionX() + shooter.width / 2;
 		int y = shooter.getPositionY();
 		switch (shooter.getType()) {
+		case HALO_LANCER:
+			// Sniper: fast and aimed at the player, no warning (GOG-85).
+			bullets.add(aimedBullet(centerX, y, targetX, targetY,
+					EnemyType.SNIPER_BULLET_SPEED));
+			break;
 		case JELLY:
 			// Double shot: two bullets spreading in a cone (GOG-84).
 			Bullet left = BulletPool.getBullet(centerX, y, BULLET_SPEED);

@@ -78,6 +78,7 @@ public final class BulletPool {
 		bullet.setSpeedX(0);
 		bullet.setFreezing(false);
 		bullet.setVulnerable(false);
+		bullet.setMaxY(Integer.MAX_VALUE);
 		bullet.setSprite();
 	}
 

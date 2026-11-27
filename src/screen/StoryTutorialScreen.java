@@ -204,7 +204,7 @@ public final class StoryTutorialScreen extends Screen {
             if (enterPressed || elapsed() >= INTRO_END) {
                 startStep(Step.MOVE);
                 glitch.setEnabled(false);
-                SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+                // Story tutorial: do not start generic BGM; SFX remain.
             }
         } else if (step == Step.EXIT) {
             if (enterPressed || elapsed() >= EXIT_TIME) {
@@ -462,7 +462,7 @@ public final class StoryTutorialScreen extends Screen {
      * @return New direction.
      */
     static int nextFormationDirection(final int minX, final int maxX,
-            final int width, final int direction) {
+                                      final int width, final int direction) {
         if (maxX + DRONE_SPEED >= width - 10) {
             return -1;
         }
@@ -649,7 +649,7 @@ public final class StoryTutorialScreen extends Screen {
 
     /** Flickering engine flame, centred on x, hanging below y. */
     private void drawFlame(final int x, final int y, final int halfWidth,
-            final int length) {
+                           final int length) {
         int len = length + random.nextInt(Math.max(1, length / 3));
         drawManager.fillBox(x - halfWidth, y, halfWidth * 2, len / 2,
                 new Color(255, 120, 30, 220));
@@ -698,30 +698,30 @@ public final class StoryTutorialScreen extends Screen {
     private void drawInstructions() {
         int y = height / 8 + 60;
         switch (step) {
-        case MOVE:
-            text("1/4  Move: A/D or LEFT/RIGHT", y);
-            hint("The ship is powered up. Get moving!", y + 25);
-            break;
-        case SHOOT:
-            text("2/4  Press SPACE to fire", y);
-            hint("Test the ship's cannon.", y + 25);
-            break;
-        case COLLECT:
-            text("3/4  Collect the power cell", y);
-            hint("Fly into it to pick it up.", y + 25);
-            break;
-        case DEFEAT:
-            text("4/4  Destroy the security drones  ("
-                    + (DRONE_COUNT - dronesLeft()) + "/" + DRONE_COUNT + ")", y);
-            hint("They are trying to stop your escape!", y + 25);
-            break;
-        default:
-            text("Tutorial complete!", y);
-            hint("Now get out of the hangar!", y + 25);
-            if (step == Step.COMPLETE) {
-                text("Press ENTER to launch", y + 75);
-            }
-            break;
+            case MOVE:
+                text("1/4  Move: A/D or LEFT/RIGHT", y);
+                hint("The ship is powered up. Get moving!", y + 25);
+                break;
+            case SHOOT:
+                text("2/4  Press SPACE to fire", y);
+                hint("Test the ship's cannon.", y + 25);
+                break;
+            case COLLECT:
+                text("3/4  Collect the power cell", y);
+                hint("Fly into it to pick it up.", y + 25);
+                break;
+            case DEFEAT:
+                text("4/4  Destroy the security drones  ("
+                        + (DRONE_COUNT - dronesLeft()) + "/" + DRONE_COUNT + ")", y);
+                hint("They are trying to stop your escape!", y + 25);
+                break;
+            default:
+                text("Tutorial complete!", y);
+                hint("Now get out of the hangar!", y + 25);
+                if (step == Step.COMPLETE) {
+                    text("Press ENTER to launch", y + 75);
+                }
+                break;
         }
     }
 

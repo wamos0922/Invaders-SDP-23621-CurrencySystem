@@ -9,12 +9,13 @@ import engine.StaminaManager;
 import engine.soundEngine.MenuSounds;
 import engine.soundEngine.Sound;
 import engine.soundEngine.SoundManager;
+import story.StoryMusic;
 
 /**
  * Implements the title screen.
- * 
+ *
  * @author <a href="mailto:RobertoIA1987@gmail.com">Roberto Izquierdo Amo</a>
- * 
+ *
  */
 public class TitleScreen extends Screen {
 
@@ -51,12 +52,12 @@ public class TitleScreen extends Screen {
 	private long staminaNoticeUntil;
 	/** Prevents a held dialog click from activating the menu behind it. */
 	private boolean ignoreMouseUntilRelease;
-    /** Whether the next cursor move by key should make a sound. */
-    private boolean moveSoundReady = true;
+	/** Whether the next cursor move by key should make a sound. */
+	private boolean moveSoundReady = true;
 
 	/**
 	 * Constructor, establishes the properties of the screen.
-	 * 
+	 *
 	 * @param width
 	 *            Screen width.
 	 * @param height
@@ -70,7 +71,7 @@ public class TitleScreen extends Screen {
 
 	/** Creates the title screen with the energy information popup optionally open. */
 	public TitleScreen(final int width, final int height, final int fps,
-			final boolean showStaminaInfo) {
+	                   final boolean showStaminaInfo) {
 		super(width, height, fps);
 		this.showingStaminaInfo = showStaminaInfo;
 		// If a mouse press caused this screen to open, do not treat that same
@@ -85,18 +86,21 @@ public class TitleScreen extends Screen {
 		this.escapeWasDown = this.inputManager.isKeyDown(KeyEvent.VK_ESCAPE);
 		this.confirmWasDown =
 				(this.inputManager.isKeyDown(KeyEvent.VK_SPACE)
-				|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER));
+						|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER));
 		this.refillWasDown = this.inputManager.isKeyDown(KeyEvent.VK_R);
 		if (starfield == null)
 			starfield = new Starfield(width, height);
 
+		// Safety net: returning to the title menu must always stop
+		// the Level 40 story soundtrack, even after death or quitting.
+		StoryMusic.stop();
 		// Title music; does nothing if it is already playing.
 		SoundManager.getInstance().playBgm(Sound.BGM_TITLE);
 	}
 
 	/**
 	 * Starts the action.
-	 * 
+	 *
 	 * @return Next screen code.
 	 */
 	public final int run() {
@@ -118,7 +122,7 @@ public class TitleScreen extends Screen {
 
 		final boolean confirmDown =
 				this.inputManager.isKeyDown(KeyEvent.VK_SPACE)
-				|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER);
+						|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER);
 		final boolean confirmPressed = confirmDown && !this.confirmWasDown;
 		this.confirmWasDown = confirmDown;
 		final boolean refillDown = this.inputManager.isKeyDown(KeyEvent.VK_R);
@@ -151,8 +155,8 @@ public class TitleScreen extends Screen {
 					this.ignoreMouseUntilRelease = false;
 			}
 			if (shouldCloseStaminaInfo(confirmPressed,
-						inputManager.isMousePressed(),
-						this.ignoreMouseUntilRelease))
+					inputManager.isMousePressed(),
+					this.ignoreMouseUntilRelease))
 				this.showingStaminaInfo = false;
 		} else if (this.showingStaminaRefillConfirm) {
 			updateStaminaRefillConfirm(confirmPressed);
@@ -195,25 +199,25 @@ public class TitleScreen extends Screen {
 	 * Handles input while the menu has focus.
 	 */
 	private void updateMenu(final boolean confirmPressed,
-			final boolean refillPressed) {
-        // Re-arm the move sound once every navigation key is released.
-        if (!inputManager.isKeyDown(KeyEvent.VK_UP)
-                && !inputManager.isKeyDown(KeyEvent.VK_W)
-                && !inputManager.isKeyDown(KeyEvent.VK_DOWN)
-                && !inputManager.isKeyDown(KeyEvent.VK_S))
-            this.moveSoundReady = true;
+	                        final boolean refillPressed) {
+		// Re-arm the move sound once every navigation key is released.
+		if (!inputManager.isKeyDown(KeyEvent.VK_UP)
+				&& !inputManager.isKeyDown(KeyEvent.VK_W)
+				&& !inputManager.isKeyDown(KeyEvent.VK_DOWN)
+				&& !inputManager.isKeyDown(KeyEvent.VK_S))
+			this.moveSoundReady = true;
 
 		if (this.selectionCooldown.checkFinished()) {
 			if (inputManager.isKeyDown(KeyEvent.VK_UP)
 					|| inputManager.isKeyDown(KeyEvent.VK_W)) {
 				this.selected = this.selected.previous();
-                playKeyMoveSound();
+				playKeyMoveSound();
 				this.selectionCooldown.reset();
 			}
 			if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
 					|| inputManager.isKeyDown(KeyEvent.VK_S)) {
 				this.selected = this.selected.next();
-                playKeyMoveSound();
+				playKeyMoveSound();
 				this.selectionCooldown.reset();
 			}
 		}
@@ -248,20 +252,20 @@ public class TitleScreen extends Screen {
 		}
 	}
 
-    /** Plays the move sound once per key press, not while the key is held. */
-    private void playKeyMoveSound() {
-        if (this.moveSoundReady) {
-            MenuSounds.playMove();
-            this.moveSoundReady = false;
-        }
-    }
+	/** Plays the move sound once per key press, not while the key is held. */
+	private void playKeyMoveSound() {
+		if (this.moveSoundReady) {
+			MenuSounds.playMove();
+			this.moveSoundReady = false;
+		}
+	}
 
 	/**
 	 * Determines whether an already-open stamina popup should close. The
 	 * opening click is ignored until its mouse button has been released.
 	 */
 	static boolean shouldCloseStaminaInfo(final boolean confirmPressed,
-			final boolean mousePressed, final boolean ignoreMouseUntilRelease) {
+	                                      final boolean mousePressed, final boolean ignoreMouseUntilRelease) {
 		return confirmPressed || (mousePressed && !ignoreMouseUntilRelease);
 	}
 
@@ -366,7 +370,7 @@ public class TitleScreen extends Screen {
 			if (yesKeyDown != noKeyDown
 					&& this.exitConfirmYes != yesKeyDown) {
 				this.exitConfirmYes = yesKeyDown;
-                MenuSounds.playMove();
+				MenuSounds.playMove();
 				this.selectionCooldown.reset();
 			}
 		}

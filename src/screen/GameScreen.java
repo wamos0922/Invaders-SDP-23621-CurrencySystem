@@ -15,11 +15,13 @@ import java.util.Set;
 
 import engine.soundEngine.Sound;
 import engine.soundEngine.SoundManager;
+import story.StoryMusic;
 import engine.CoinDropManager;
 import engine.Cooldown;
 import engine.Core;
 import engine.DrawManager;
 import engine.CurrencyManager;
+import engine.DailyChallenge;
 import engine.EndlessMode;
 import engine.GameSettings;
 import engine.GameState;
@@ -46,10 +48,15 @@ import entity.FinalBoss;
 import entity.TempestQueen;
 import entity.AICommander;
 import entity.EnemyShipFormation;
+import entity.RingDreadnought;
 import entity.Entity;
 import entity.Particle;
 import entity.Ship;
 import item.ItemSystem;
+import skilltree.SkillArmor;
+import skilltree.SkillEffects;
+import skilltree.SkillSalvage;
+import skilltree.SkillStat;
 import item.ItemAPI.EventType;
 import item.ItemAPI.ItemEvent;
 
@@ -221,6 +228,11 @@ public class GameScreen extends Screen {
 	private Set<Bullet> bullets;
 	/** Set of coins currently dropped and falling on screen. */
 	private Set<Coin> coins;
+	/** Story background for this level, or null for endless mode (GOG-14). */
+	private java.awt.image.BufferedImage storyBackground;
+	/** Small animations on top of the story background (GOG-14). */
+	private engine.StoryBackgroundEffects backgroundEffects;
+
 	/** Coins picked up since this level (or its last restart) began. They
 	 * are already banked in CurrencyManager, so a restart has to take them
 	 * back, or restarting would be a free coin farm. */
@@ -236,8 +248,8 @@ public class GameScreen extends Screen {
 	private int bulletsShot;
 	/** Total ships destroyed by the player. */
 	private int shipsDestroyed;
-    /** Total coins collected by the player. */
-    private int coinsCollected;
+	/** Total coins collected by the player. */
+	private int coinsCollected;
 	/** Moment the game starts. */
 	private long gameStartTime;
 	/** Checks if the level is finished. */
@@ -300,6 +312,10 @@ public class GameScreen extends Screen {
 	private List<long[]> scoreBoostPopups;
 	/** Item system of this run (Team CS). Kept across levels by ItemSystem. */
 	private ItemSystem items;
+	/** Effects of the ship's unlocked skill tree nodes (GOG-89). */
+	private SkillEffects skills;
+	/** Armor skill nodes in this level: shields and blocked hits (GOG-89). */
+	private SkillArmor armor;
 	/** Item slot keys (1-9) held last frame, so holding a key uses it once. */
 	private boolean[] itemSlotKeysHeld = new boolean[9];
 	/** Skin chosen in Customize; animated skins change colour each frame (GoG). */
@@ -347,13 +363,18 @@ public class GameScreen extends Screen {
 	 *            Frames per second, frame rate at which the game is run.
 	 */
 	public GameScreen(final GameState gameState,
-					  final GameSettings gameSettings, final boolean bonusLife,
-					  final int width, final int height, final int fps) {
+	                  final GameSettings gameSettings, final boolean bonusLife,
+	                  final int width, final int height, final int fps) {
 		super(width, height, fps);
 
 		this.gameSettings = gameSettings;
 		this.bonusLife = bonusLife;
 		this.level = gameState.getLevel();
+		// GOG-14: each part of the story has its own background.
+		this.storyBackground = EndlessMode.isEnabled() ? null
+				: engine.StoryBackgrounds.forLevel(this.level);
+		this.backgroundEffects = this.storyBackground == null ? null
+				: new engine.StoryBackgroundEffects(this.level, this.storyBackground);
 		this.score = gameState.getScore();
 		this.lives = gameState.getLivesRemaining();
 		if (this.bonusLife)
@@ -362,7 +383,7 @@ public class GameScreen extends Screen {
 		this.shipsDestroyed = gameState.getShipsDestroyed();
 		this.pendingDiamonds = gameState.getPendingDiamonds();
 		this.levelsCompletedRun = gameState.getLevelsCompletedRun();
-        this.coinsCollected = gameState.getCoinsCollected();
+		this.coinsCollected = gameState.getCoinsCollected();
 		this.tookDamage = false;
 
 
@@ -382,7 +403,17 @@ public class GameScreen extends Screen {
 
 	public final void initialize() {
 		super.initialize();
-		SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+		// GOG-35: Dedicated gameplay music for Story Mode level ranges.
+		// Endless and Daily Challenges retain their normal gameplay BGM.
+		if (EndlessMode.isEnabled() || DailyChallenge.isRunning()) {
+			StoryMusic.stop();
+			SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+		} else {
+			SoundManager.getInstance().stopBgm();
+			// Levels 1-9: FirstPhase, 11-19: SecondPhase.
+			// Level 40 still continues Panel 27's finalBoss.wav.
+			StoryMusic.playForLevel(this.level);
+		}
 
 		// Initialize the player in both boss and normal stages.
 		this.ship = new Ship(this.width / 2, this.height - SHIP_ROW_FROM_BOTTOM,
@@ -398,12 +429,14 @@ public class GameScreen extends Screen {
 				&& this.level <= 40
 				&& this.level % 10 == 0) {
 			// GOG-74: level 10 is the AI Warship; GOG-75: level 20 is the
-			// Tempest Queen; GOG-77: level 40 is the AI Commander; the other
-			// boss levels keep the placeholder until their bosses are built.
+			// Tempest Queen; GOG-76: level 30 is the Ring Dreadnought;
+			// GOG-77: level 40 is the AI Commander.
 			if (this.level == 10)
 				this.midBoss = new AIWarship(this.width / 2 - 24, 100);
 			else if (this.level == 20)
 				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
+			else if (this.level == 30)
+				this.midBoss = new RingDreadnought(this.width / 2 - 24, 100);
 			else if (this.level == 40)
 				this.midBoss = new AICommander(this.width / 2 - 24, 96);
 			else
@@ -425,6 +458,12 @@ public class GameScreen extends Screen {
 		shop.ShapeSkin shape = PurchaseManager.getInstance()
 				.getSelectedShape(this.ship.getType());
 		this.ship.setShapeSprite(shape == null ? null : shape.getSprite());
+		// Skill tree nodes unlocked for this ship (GOG-89).
+		this.skills = SkillEffects.forShip(this.ship.getType());
+		this.ship.setSkillBonuses(this.skills.multiplier(SkillStat.SPEED),
+				this.skills.multiplier(SkillStat.FIRE_RATE),
+				this.skills.multiplier(SkillStat.BULLET_SPEED),
+				this.skills.multiplier(SkillStat.BULLET_SIZE));
 		// Appears each 10-30 seconds.
 		this.enemyShipSpecialCooldown = Core.getVariableCooldown(
 				BONUS_SHIP_INTERVAL, BONUS_SHIP_VARIANCE);
@@ -459,12 +498,20 @@ public class GameScreen extends Screen {
 		this.coinsCollectedThisLevel = 0;
 		this.achievementPopupQueue = new LinkedList<Achievement>();
 		this.coinDropManager = new CoinDropManager();
+		// Scavenger skill node: more coins (GOG-89).
+		this.coinDropManager.setDropChance(Math.min(1.0,
+				CoinDropManager.DEFAULT_DROP_CHANCE
+						+ SkillSalvage.coinChanceBonus(this.skills)));
 		this.pauseKeyCooldown = Core.getCooldown(PAUSE_KEY_DEBOUNCE);
 		this.pauseSelectionCooldown = Core.getCooldown(PAUSE_SELECTION_DEBOUNCE);
 		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
 		// Item System (Team CS): level 1 starts a new run, later levels keep it.
+		// Salvage and Cooled Barrel skill nodes change its drops (GOG-89).
+		ItemSystem.setRunBonuses(SkillSalvage.itemChanceBonus(this.skills),
+				SkillSalvage.groundTimeBonus(this.skills),
+				SkillSalvage.rapidFireExtraStacks(this.skills));
 		this.items = ItemSystem.forLevel(this.level);
 		this.items.beginLevel(this.level, this.width, this.ship,
 				new ItemSystem.GameHooks() {
@@ -479,6 +526,9 @@ public class GameScreen extends Screen {
 		this.gameStartTime = System.currentTimeMillis();
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
+		// Armor skill nodes: Launch Shield starts when the countdown ends (GOG-89).
+		this.armor = new SkillArmor(this.skills, this.midBoss != null);
+		this.armor.startLevel(this.gameStartTime + INPUT_DELAY);
 	}
 
 
@@ -501,11 +551,21 @@ public class GameScreen extends Screen {
 	 * @return Next screen code.
 	 */
 	public final int run() {
+		boolean clearedNormally = false;
 		try {
 			super.run();
+			// An interrupted or otherwise abnormal exit must not retain music.
+			clearedNormally = !this.isRunning && this.levelFinished
+					&& !this.gameOverActive && this.lives > 0;
 		} finally {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.lightningChain);
+			// Only successful Story Mode clears of Levels 36-39 hand off music.
+			if (!StoryMusic.shouldContinueAfterLevel(this.level,
+					!EndlessMode.isEnabled() && !DailyChallenge.isRunning(),
+					clearedNormally)) {
+				StoryMusic.stop();
+			}
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -631,8 +691,15 @@ public class GameScreen extends Screen {
 					this.enemyShipFormation.update();
 					this.enemyShipFormation.updateDives(); // Comet kamikaze (GOG-86)
 				}
+				// Halo Lancer snipers aim at the player (GOG-85).
+				this.enemyShipFormation.setTarget(
+						this.ship.getPositionX() + this.ship.getWidth() / 2,
+						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.enemyShipFormation.shoot(this.bullets);
-				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
+				// No bonus meteor in challenges: challenges pay no
+				// diamonds, so its diamonds would be lost (GOG-104).
+				if (!DailyChallenge.isRunning())
+					this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
 			updateLowHealthEffect();
 			this.ship.setBlinking(this.lowHealthActive);
@@ -644,6 +711,7 @@ public class GameScreen extends Screen {
 				&& !this.ship.isDestroyed());
 		manageCollisions();
 		handleCometBlasts(); // GOG-86
+		handleFighterDrops(); // GOG-85
 		handleMiteBooms(); // GOG-86
 		updateVulnerable(); // GOG-86
 		manageFreeRoamCrashes();
@@ -684,6 +752,11 @@ public class GameScreen extends Screen {
 			if (isCleared && this.lives > 0) {
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				SoundManager.getInstance().stopBgm();
+				// Keep Panel 26 music alive across victorious Story Levels 36-39.
+				if (!StoryMusic.shouldContinueAfterLevel(this.level,
+						!EndlessMode.isEnabled() && !DailyChallenge.isRunning(), true)) {
+					StoryMusic.stop();
+				}
 				SoundManager.getInstance().playSfx(Sound.VICTORY);
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
@@ -701,12 +774,15 @@ public class GameScreen extends Screen {
 				}
 				showUnlockedAchievements(Core.getAchievementManager()
 						.recordFlawlessLevelCompleted(this.tookDamage));
-				showUnlockedAchievement(Core.getAchievementManager()
-						.recordLevelCompleted(this.level));
-                showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
+				// Story progress achievements do not count in challenges,
+				// which jump straight to later story levels (GOG-102).
+				if (!DailyChallenge.isRunning())
+					showUnlockedAchievement(Core.getAchievementManager()
+							.recordLevelCompleted(this.level));
+				showUnlockedAchievement(Core.getAchievementManager().recordRunCoins(this.coinsCollected));
 
 				// Level 10 / game won only count in story mode (GOG-7).
-				if (!EndlessMode.isEnabled())
+				if (!EndlessMode.isEnabled() && !DailyChallenge.isRunning())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordLevelCompleted(
 									this.level,
@@ -714,7 +790,7 @@ public class GameScreen extends Screen {
 									true));
 
 				// Last level cleared alive: the game is beaten.
-				if (!EndlessMode.isEnabled()
+				if (!EndlessMode.isEnabled() && !DailyChallenge.isRunning()
 						&& this.level == Core.getNumLevels())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordGameWon(Core.getSelectedShipId()));
@@ -723,7 +799,7 @@ public class GameScreen extends Screen {
 
 		if (this.levelFinished && this.screenFinishedCooldown.checkFinished()
 				&& (this.blackHole == null
-						|| this.blackHole.isFinished(System.currentTimeMillis()))
+				|| this.blackHole.isFinished(System.currentTimeMillis()))
 				&& this.unlockedAchievement == null
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
@@ -738,6 +814,8 @@ public class GameScreen extends Screen {
 	 */
 	private void startGameOverSequence() {
 		SoundManager.getInstance().stopBgm();
+		// The final boss music stops as soon as the player runs out of lives.
+		StoryMusic.stop();
 		SoundManager.getInstance().playSfx(Sound.GAME_OVER);
 		this.levelFinished = true;
 		this.gameOverActive = true;
@@ -913,6 +991,8 @@ public class GameScreen extends Screen {
 				restartLevel();
 				break;
 			case QUIT:
+				// Stop the custom final boss soundtrack immediately on quit.
+				StoryMusic.stop();
 				// No dedicated "abandon" path exists in the screen flow,
 				// but ending the run the same way running out of lives
 				// does takes us straight to the existing score screen,
@@ -941,6 +1021,10 @@ public class GameScreen extends Screen {
 		// Nor the black hole scene (GOG-74).
 		if (this.paused && this.blackHole != null)
 			this.blackHole.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor the Armor skill shields (GOG-89).
+		if (this.paused)
+			this.armor.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
@@ -971,6 +1055,10 @@ public class GameScreen extends Screen {
 	 */
 	private void draw() {
 		drawManager.initDrawing(this);
+		if (this.storyBackground != null) {
+			drawManager.drawBackground(this, this.storyBackground);
+			this.backgroundEffects.draw(drawManager, this);
+		}
 
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
@@ -1011,6 +1099,10 @@ public class GameScreen extends Screen {
 			if (this.warpIn != null && this.warpIn.takeImpact())
 				this.screenShake.trigger();
 			drawManager.drawItemShield(this.ship, this.items); // Item System (Team CS)
+			if (this.armor.shieldActive(System.currentTimeMillis())) // Armor skill shield (GOG-89)
+				drawManager.drawBox(this.ship.getPositionX() - 4,
+						this.ship.getPositionY() - 4, this.ship.getWidth() + 8,
+						this.ship.getHeight() + 8, new java.awt.Color(120, 220, 255));
 			if (this.enemyShipSpecial != null)
 				drawManager.drawEntity(this.enemyShipSpecial,
 						this.enemyShipSpecial.getPositionX(),
@@ -1071,7 +1163,7 @@ public class GameScreen extends Screen {
 			long left = Math.max(0, this.vulnerableUntil
 					- System.currentTimeMillis());
 			drawManager.drawCenteredRegularString(this, "VULNERABLE "
-					+ ((left + 999) / 1000), SEPARATION_LINE_HEIGHT + 20,
+							+ ((left + 999) / 1000), SEPARATION_LINE_HEIGHT + 20,
 					EnemyType.VULNERABLE_BULLET_COLOR);
 		}
 		drawManager.drawLevel(this, this.level);
@@ -1185,6 +1277,7 @@ public class GameScreen extends Screen {
 			bullet.update();
 			if (bullet.getPositionY() < SEPARATION_LINE_HEIGHT
 					|| bullet.getPositionY() > this.height
+					|| bullet.getPositionY() > bullet.getMaxY() // short range (GOG-76)
 					|| bullet.getPositionX() + bullet.getWidth() < 0
 					|| bullet.getPositionX() > this.width)
 				recyclable.add(bullet);
@@ -1238,12 +1331,17 @@ public class GameScreen extends Screen {
 		// Back to the starting row, so the ship does not crash again
 		// straight away into the enemies next to the one it hit.
 		this.ship.setPositionY(this.height - SHIP_ROW_FROM_BOTTOM);
+		if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+			this.logger.info("Crashed into an enemy, blocked by Armor.");
+			return;
+		}
 		if (this.items.tryBlockHit()) { // Shield item (Team CS)
 			this.logger.info("Crashed into an enemy, blocked by shield.");
 			return;
 		}
 		this.ship.destroy();
 		this.lives--;
+		this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 		PlayerSounds.playHit(this.lives);
 		this.tookDamage = true;
 		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
@@ -1275,13 +1373,15 @@ public class GameScreen extends Screen {
 			if (this.levelFinished || this.ship.isDestroyed()
 					|| this.lives <= 0)
 				return;
-			if (this.items.tryBlockHit()) { // Shield item (Team CS)
+			if (this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
+					|| this.items.tryBlockHit()) { // Shield item (Team CS)
 				this.midBoss.onPlayerHitBlocked();
-				this.logger.info("Boss attack blocked by shield.");
+				this.logger.info("Boss attack blocked by a shield.");
 				continue;
 			}
 			this.ship.destroy();
 			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 			PlayerSounds.playHit(this.lives);
 			this.tookDamage = true;
 			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
@@ -1295,6 +1395,9 @@ public class GameScreen extends Screen {
 	 */
 	private void manageCollisions() {
 		Set<Bullet> recyclable = new HashSet<Bullet>();
+		// Bullets Hex Sentinel shields send back (GOG-85); added after the
+		// loop so the bullet set isn't changed while it is being read.
+		Set<Bullet> reflected = new HashSet<Bullet>();
 		for (Bullet bullet : this.bullets) {
 			if (bullet.getSpeed() > 0) {
 				if (checkCollision(bullet, this.ship) && !this.levelFinished
@@ -1308,10 +1411,12 @@ public class GameScreen extends Screen {
 						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
 					} else if (!this.ship.isDestroyed()
+							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
 						this.lives--;
-                        PlayerSounds.playHit(this.lives); // <-- Ajout du son
+						this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
+						PlayerSounds.playHit(this.lives); // <-- Ajout du son
 						this.tookDamage = true; // Survivor tiers (Mantis)
 						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
 						this.logger.info("Hit on player ship, " + this.lives
@@ -1358,8 +1463,15 @@ public class GameScreen extends Screen {
 								continue;
 							}
 							// Surviving hits consume the bullet without awarding kill rewards.
+							boolean shielded = enemyShip.getShield() > 0;
 							if (!enemyShip.takeDamage(1)) {
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
+								// Hex Sentinel: its shield sends the bullet
+								// back at the player (GOG-85).
+								if (shielded && enemyShip.getType()
+										== EnemyType.HEX_SENTINEL)
+									this.enemyShipFormation.reflectShot(bullet,
+											reflected);
 								continue;
 							}
 							this.score += this.items.scoreFor(enemyShip.getPointValue());
@@ -1413,6 +1525,7 @@ public class GameScreen extends Screen {
 		}
 		this.bullets.removeAll(recyclable);
 		BulletPool.recycle(recyclable);
+		this.bullets.addAll(reflected);
 	}
 
 	/**
@@ -1473,7 +1586,7 @@ public class GameScreen extends Screen {
 	 * @return The Stinger bullet hit, or null.
 	 */
 	private Bullet findVulnerableBulletHit(final Bullet playerBullet,
-			final Set<Bullet> recyclable) {
+	                                       final Set<Bullet> recyclable) {
 		for (Bullet other : this.bullets)
 			if (other.isVulnerable() && other.getSpeed() > 0
 					&& !recyclable.contains(other)
@@ -1501,16 +1614,52 @@ public class GameScreen extends Screen {
 					- blast.y;
 			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
 				continue;
+			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+				this.logger.info("Comet blast blocked by Armor.");
+				continue;
+			}
 			if (this.items.tryBlockHit()) { // Shield item (Team CS)
 				this.logger.info("Comet blast blocked by shield.");
 				continue;
 			}
 			this.ship.destroy();
 			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
 			PlayerSounds.playHit(this.lives);
 			this.tookDamage = true;
 			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
 			this.logger.info("Caught in a Comet blast, " + this.lives
+					+ " lives remaining.");
+		}
+	}
+
+	/**
+	 * A falling Orbit Fighter crashed into the player (GOG-85): the player
+	 * loses a life for each one; a shield blocks it.
+	 */
+	private void handleFighterDrops() {
+		if (this.enemyShipFormation == null || this.levelFinished
+				|| this.ship.isDestroyed() || this.lives <= 0)
+			return;
+		int crashes = this.enemyShipFormation.takeDropHits(this.ship);
+		for (int i = 0; i < crashes && this.lives > 0
+				&& !this.ship.isDestroyed(); i++) {
+			this.screenShake.trigger();
+			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+				this.logger.info("Orbit Fighter crash blocked by Armor.");
+				continue;
+			}
+			if (this.items.tryBlockHit()) { // Shield item (Team CS)
+				this.logger.info("Orbit Fighter crash blocked by shield.");
+				continue;
+			}
+			this.ship.destroy();
+			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
+			PlayerSounds.playHit(this.lives);
+			this.tookDamage = true;
+			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+			this.logger.info("Hit by a falling Orbit Fighter, " + this.lives
 					+ " lives remaining.");
 		}
 	}
@@ -1743,7 +1892,7 @@ public class GameScreen extends Screen {
 	 *            Whether it is the bonus ship (uses its own popup style).
 	 */
 	private void queueScoreBoostPopup(final EnemyShip enemy,
-									  final boolean bonusShip) {
+	                                  final boolean bonusShip) {
 		int extra = this.items.scoreBonus(enemy.getPointValue());
 		if (extra <= 0)
 			return;

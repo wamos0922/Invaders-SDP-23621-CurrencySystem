@@ -117,6 +117,15 @@ public class Ship extends Entity {
 	private double itemBulletSpeedBonus;
 	/** Extra movement speed from items, added to the base speed (Team CS). */
 	private int itemMovementSpeedBonus;
+	/** Skill tree factors (GOG-89): speed, fire rate, bullet speed, size. */
+	private double skillSpeed = 1.0;
+	private double skillFireRate = 1.0;
+	private double skillBulletSpeed = 1.0;
+	private double skillBulletSize = 1.0;
+	/** Part of a pixel not moved yet, so +8% speed adds up over frames. */
+	private double moveCarry;
+	/** Current time between shots, in milliseconds. */
+	private int shootingIntervalMillis;
 
 	/**
 	 * AUTHORED BY: VFX TEAM (effection)
@@ -162,6 +171,7 @@ public class Ship extends Entity {
 		this.type = type;
 		this.idleSprite = type.idleSprite;
 		this.spriteType = this.idleSprite;
+		this.shootingIntervalMillis = type.shootingInterval;
 		this.shootingCooldown = Core.getCooldown(type.shootingInterval);
 		this.destructionCooldown = Core.getCooldown(1000);
 		this.freezeCooldown = Core.getCooldown(EnemyType.FREEZE_MILLIS);
@@ -175,17 +185,35 @@ public class Ship extends Entity {
 	/**
 	 * Moves the ship speed uni ts right, or until the right screen border is
 	 * reached.
-	 */
+		 */
 	public final void moveRight() {
-		this.positionX += getSpeed();
+		this.positionX += nextStep();
 	}
 
 	/**
 	 * Moves the ship speed units left, or until the left screen border is
 	 * reached.
-	 */
+	 	 */
 	public final void moveLeft() {
-		this.positionX -= getSpeed();
+		this.positionX -= nextStep();
+	}
+
+	/**
+	 * @return Whole pixels to move this frame. Skill bonuses can make the
+	 *         speed a fraction (e.g. 4.32), so the leftover is kept for the
+	 *         next frame (GOG-89).
+	 */
+	private int nextStep() {
+		double exact = exactSpeed() + this.moveCarry;
+		int whole = (int) exact;
+		this.moveCarry = exact - whole;
+		return whole;
+	}
+
+	/** @return Speed in pixels per frame, with item and skill bonuses. */
+	private double exactSpeed() {
+		return (this.type.speed + this.itemMovementSpeedBonus)
+				* this.skillSpeed;
 	}
 
 	/**
@@ -200,9 +228,10 @@ public class Ship extends Entity {
 		if (isFrozen())
 			return false;
 		if (this.shootingCooldown.checkFinished()) {
-			this.shootingCooldown.reset();
+						this.shootingCooldown.reset();
 			final int centerX = positionX + this.width / 2;
-			final int bulletSpeed = BULLET_SPEED
+			final int bulletSpeed = (int) Math.round(BULLET_SPEED
+					* this.skillBulletSpeed)
 					- (int) Math.round(this.itemBulletSpeedBonus);
 			if (this.type == ShipType.TWO_WAY) {
 				bullets.add(BulletPool.getBullet(centerX - BARREL_OFFSET,
@@ -211,8 +240,10 @@ public class Ship extends Entity {
 						positionY, bulletSpeed));
 			} else if (this.type == ShipType.BIG_BULLET) {
 				// Spawns a larger projectile (e.g., 9x15 scaled by 2)
+								// Spawns a larger projectile (e.g., 9x15 scaled by 2)
 				bullets.add(BulletPool.getCustomBullet(centerX, positionY,
-						bulletSpeed, 9 * 2, 15 * 2));
+						bulletSpeed, (int) Math.round(9 * 2 * this.skillBulletSize),
+						(int) Math.round(15 * 2 * this.skillBulletSize)));
 			} else {
 				bullets.add(BulletPool.getBullet(centerX, positionY,
 						bulletSpeed));
@@ -255,13 +286,58 @@ public class Ship extends Entity {
 				movementSpeedBonus));
 		this.itemBulletSpeedBonus = Math.max(0, bulletSpeedBonus);
 		double bonus = Math.max(0, fireRateBonus);
-		if (bonus != this.itemFireRateBonus) {
+				if (bonus != this.itemFireRateBonus) {
 			this.itemFireRateBonus = bonus;
-			// (base shots per second) + (item bonus) -> new interval.
-			this.shootingCooldown = Core.getCooldown((int) Math.round(
-					1000.0 / (1000.0 / this.type.shootingInterval + bonus)));
+			updateShootingInterval();
 		}
 	}
+
+	/**
+	 * Sets the skill tree bonuses of this ship (GOG-89), as factors: 1.0 is
+	 * no change, 1.16 is +16%. Item bonuses still add on top.
+	 *
+	 * @param speed
+	 *            Movement speed factor.
+	 * @param fireRate
+	 *            Shots per second factor.
+	 * @param bulletSpeed
+	 *            Bullet speed factor.
+	 * @param bulletSize
+	 *            Bullet size factor (Big Bullet's shell only).
+	 */
+	public final void setSkillBonuses(final double speed,
+			final double fireRate, final double bulletSpeed,
+			final double bulletSize) {
+		this.skillSpeed = Math.max(0.1, speed);
+		this.skillBulletSpeed = Math.max(0.1, bulletSpeed);
+		this.skillBulletSize = Math.max(0.1, bulletSize);
+		if (fireRate != this.skillFireRate) {
+			this.skillFireRate = Math.max(0.1, fireRate);
+			updateShootingInterval();
+		}
+	}
+
+	/**
+	 * (base shots per second x skill factor) + (item bonus) -> time
+	 * between shots.
+	 */
+	private void updateShootingInterval() {
+		double perSecond = 1000.0 / this.type.shootingInterval
+				* this.skillFireRate + this.itemFireRateBonus;
+		this.shootingIntervalMillis = (int) Math.round(1000.0 / perSecond);
+		this.shootingCooldown = Core.getCooldown(this.shootingIntervalMillis);
+	}
+
+	/**
+	 * @return Time between shots right now, in milliseconds, with item and
+	 *         skill bonuses (GOG-89).
+	 */
+	public final int getShootingIntervalMillis() {
+		return this.shootingIntervalMillis;
+	}
+
+	/**
+	 * Paints the ship in a skin colour (GoG - Currency System). The
 
 	/**
 	 * Paints the ship in a skin colour (GoG - Currency System). The
@@ -388,12 +464,13 @@ public class Ship extends Entity {
 	}
 
 	/**
-	 * Getter for the ship's speed.
+	 	 * Getter for the ship's speed.
 	 *
-	 * @return Speed of the ship, including any item bonus.
+	 * @return Speed of the ship, including item and skill bonuses, rounded
+	 *         to whole pixels per frame.
 	 */
 	public final int getSpeed() {
-		return this.type.speed + this.itemMovementSpeedBonus;
+		return (int) Math.round(exactSpeed());
 	}
 
 	/**

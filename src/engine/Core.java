@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.ConsoleHandler;
@@ -19,10 +21,12 @@ import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import engine.soundEngine.SoundManager;
 import entity.Ship;
 import item.ItemSystem;
 import screen.*;
 import story.NameEntryPanel;
+import story.StoryMusic;
 
 /**
  * Main game loop. Selects a persistent player profile before the title menu.
@@ -119,6 +123,7 @@ public final class Core {
 
 			switch (returnCode) {
 				case 1:
+					StoryMusic.stop();
 					currentScreen =
 							new TitleScreen(width, height, FPS);
 
@@ -233,8 +238,8 @@ public final class Core {
 								}
 							} else {
 								showSaveError(
-											"Could not bank old Story diamonds",
-											new IOException("Please check whether your save folder is writable."));
+										"Could not bank old Story diamonds",
+										new IOException("Please check whether your save folder is writable."));
 								returnCode = 1;
 								break;
 							}
@@ -356,15 +361,24 @@ public final class Core {
 									break;
 								}
 
-								// Preserve boss rewards and cutscenes.
+								// Level 40 is special: finish its ending panels before
+								// showing any reward or completion screen.
+								boolean finalStoryLevel =
+										clearedLevel == NUM_LEVELS;
+
+								if (finalStoryLevel) {
+									StoryMode.onLevelCompleted(
+											frame,
+											clearedLevel);
+								}
+
+								// Other levels show special rewards before
+								// their Level Completed screen and cutscene.
+								// Level 40 shows this AFTER its ending cutscene.
 								showLevelReward(
 										clearedLevel,
 										width,
 										height);
-
-								StoryMode.onLevelCompleted(
-										frame,
-										clearedLevel);
 
 								// Save real progression before showing
 								// the Continue / Exit screen.
@@ -407,8 +421,21 @@ public final class Core {
 
 								frame.setScreen(currentScreen);
 
-								if (((StoryLevelCompleteScreen)
-										currentScreen).didExit()) {
+								// Remember Continue/Exit, but still play post-level
+								// story panels even if the player chooses Exit.
+								boolean choseExit =
+										((StoryLevelCompleteScreen)
+												currentScreen).didExit();
+
+								// Normal milestone cutscenes run AFTER Level Completed.
+								// Ordinary levels with no cutscene are unaffected.
+								if (!finalStoryLevel) {
+									StoryMode.onLevelCompleted(
+											frame,
+											clearedLevel);
+								}
+
+								if (choseExit) {
 									exitStoryAfterClear = true;
 									break;
 								}
@@ -488,6 +515,11 @@ public final class Core {
 							new ShipSelectScreen(width, height, FPS);
 
 					returnCode = frame.setScreen(currentScreen);
+					break;
+
+				case ChallengeMenuScreen.CODE:
+					// Challenges menu: daily (GOG-102) and weekly (GOG-44).
+					returnCode = runChallenges(width, height);
 					break;
 
 				case ItemsScreen.CODE:
@@ -845,6 +877,84 @@ public final class Core {
 				reward);
 
 		frame.setScreen(currentScreen);
+	}
+
+	/**
+	 * Shows the challenges menu and plays the daily (GOG-102) or weekly
+	 * (GOG-44) challenge the player picks, then its results screen. Uses
+	 * no stamina and never touches story saves or story rewards.
+	 *
+	 * @param width
+	 *            Screen width.
+	 * @param height
+	 *            Screen height.
+	 * @return Next screen code: the challenges menu again after a run, or
+	 *         the title screen.
+	 */
+	private static int runChallenges(final int width, final int height) {
+		currentScreen = new ChallengeMenuScreen(width, height, FPS);
+		int choice = frame.setScreen(currentScreen);
+		boolean weekly = choice == ChallengeMenuScreen.PLAY_WEEKLY;
+		if (!weekly && choice != ChallengeMenuScreen.PLAY_DAILY)
+			return 1;
+
+		SoundManager.getInstance().stopBgm();
+		EndlessMode.setEnabled(false);
+		ItemSystem.setRunEquipment(ItemLoadout.getInstance()
+				.getEquipped(ItemLoadout.Mode.STORY));
+
+		LocalDate day = LocalDate.now();
+		List<DailyChallenge.Stage> stages = weekly
+				? WeeklyChallenge.stagesFor(day)
+				: DailyChallenge.stagesFor(day);
+		LOGGER.info("Starting " + (weekly ? "weekly" : "daily")
+				+ " challenge for " + day);
+
+		GameState state = new GameState(stages.get(0).getLevel(), 0,
+				MAX_LIVES, 0, 0, 0);
+		int stagesCleared = 0;
+		DailyChallenge.setRunning(true);
+		try {
+			for (int i = 0; i < stages.size(); i++) {
+				DailyChallenge.Stage stage = stages.get(i);
+				int lives = state.getLivesRemaining();
+				// Weekly: one life back before the first boss (GOG-44).
+				if (weekly)
+					lives = WeeklyChallenge.livesForStage(stages, i, lives,
+							MAX_LIVES);
+				// Challenges pay shards, not story diamonds: pending
+				// diamonds are dropped between stages.
+				state = new GameState(stage.getLevel(), state.getScore(),
+						lives, state.getBulletsShot(),
+						state.getShipsDestroyed(), 0,
+						state.getLevelsCompletedRun(),
+						state.getCoinsCollected());
+				currentScreen = new GameScreen(state,
+						StoryMode.getSettings(stage.getLevel()), false,
+						width, height, FPS);
+				frame.setScreen(currentScreen);
+				state = ((GameScreen) currentScreen).getGameState();
+				if (state.getLivesRemaining() <= 0)
+					break;
+				stagesCleared++;
+			}
+		} finally {
+			DailyChallenge.setRunning(false);
+		}
+
+		boolean cleared = stagesCleared == stages.size();
+		String reward = !cleared ? null
+				: weekly ? WeeklyChallenge.payReward(day)
+						: DailyChallenge.payReward(day);
+		LOGGER.info((weekly ? "Weekly" : "Daily") + " challenge "
+				+ (cleared ? "cleared" : "failed") + ": " + stagesCleared
+				+ "/" + stages.size() + " stages.");
+
+		currentScreen = new ChallengeResultScreen(width, height, FPS,
+				weekly, cleared, stagesCleared, stages.size(),
+				state.getScore(), reward);
+		frame.setScreen(currentScreen);
+		return ChallengeMenuScreen.CODE;
 	}
 
 	/**

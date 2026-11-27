@@ -6,35 +6,29 @@ Team members contain of student from Malaysia. We mainly focus on developing som
 
 ## Members
 
-| Name | Role | GitHub |
+The nine members worked as three squads of three. The team leader led all three squads.
+
+| Squad | Members | Individual roles |
 | --- | --- | --- |
-| Haikal fiqri | Team Leader | [haikalfiqri](https://github.com/haikalfiqri) |
-| Ikhwan Zarif | Collaborator | [wamos0922](https://github.com/wamos0922)|
-| Nik Ammar | Code Checker | [nikmar9705](https://github.com/nikmar9705) |
-| Zarith Imran | Code Builder | [zeth-ux](https://github.com/zeth-ux) |
-| Wafi | Presentor | [wafisapuan](https://github.com/wafisapuan) |
-| Muizuddin | Bug Tester | [mfuizz](https://github.com/mfuizz) |
-| Aqil Amani | Bug Solver | [Soy05](https://github.com/Soy05) |
-| Ashrafuddin Fadhil | Database | [asyrafuddin](https://github.com/asyrafuddin) |
-| Akif | UI Designer | [abangBoy13](https://github.com/abangBoy13) |
+| A | Haikal, Imran, Muizzudin | Team Leader, Code Builder, Code Checker  |
+| B | Ikhwan, Wafi, Nik Ammar | Collaborator, Code Builder, Code Checker |
+| C | Akif, Asyarafuddin, Aqil | UI Designer, Code Builder, Code Checker |
 
-## Second-half project: new game (Jira project GOG)
+### GitHub profiles
 
-For the second half we build a new game on top of the currency system. Each member owns their own features. Rules are in [CONTRIBUTING.md](../CONTRIBUTING.md) and the process is in [docs/PROCESS.md](../docs/PROCESS.md).
-
-| Member | Features |
+| Name | GitHub |
 | --- | --- |
-| Haikal | Team lead; mode selection menu, bigger game screen, shard space mode, documentation and presentation |
-| Imran | Game modes (endless and story), free-roam movement, challenge modes |
-| Amani | Level-up cards, stamina system |
-| Ikhwan | Shards, upgrades, customize tab, weekly challenges |
-| Muizzuddin | Story mode (planet progression, story script, story UI) |
-| Wafi | Story content (planet content, tutorial, visuals and audio), shard designs |
-| Asyrafuddin | Enemy variants |
-| Nik Ammar | Boss design and implementation |
-| Akif | Tester and main PR reviewer (Ikhwan is 2nd, Haikal 3rd) |
+| Haikal Fiqri | [haikalfiqri](https://github.com/haikalfiqri) |
+| Zarith Imran | [zeth-ux](https://github.com/zeth-ux) |
+| Muizzudin | [mfuizz](https://github.com/mfuizz) |
+| Ikhwan Zarif | [wamos0922](https://github.com/wamos0922) |
+| Wafi | [wafisapuan](https://github.com/wafisapuan) |
+| Nik Ammar | [nikmar9705](https://github.com/nikmar9705) |
+| Akif | [abangBoy13](https://github.com/abangBoy13) |
+| Asyarafuddin | [asyrafuddin](https://github.com/asyrafuddin) |
+| Aqil Amani | [Soy05](https://github.com/Soy05) |
 
-## Responsibilities (first half: currency system)
+## Responsibilities
 
 # Team Requirements
 Our team is responsible for designing and managing the game's currency system. This includes handling currency earning, spending, balance management, reward scaling, and integration with gameplay systems.
@@ -59,4 +53,4 @@ Our team is responsible for designing and managing the game's currency system. T
 
 - Item System: Requires item prices and purchase requests to validate and deduct currency.
 - Level Design System: Requires level completion and difficulty information to calculate level bonuses and reward scaling.
-- Gameplay HUD & UI: Requires currency balance updates to display coins and diamonds during gameplay.
+- Gameplay HUD & UI: Requires currency balance updates to display coins and diamonds during gameplay.

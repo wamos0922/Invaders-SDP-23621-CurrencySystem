@@ -45,6 +45,10 @@ public class EnemyShip extends Entity {
 	public static final Color EARTH_OCEAN = new Color(0x4A8CFF);
 	/** earth-magma: AI Warship in phase 2, at half health (GOG-78). */
 	public static final Color EARTH_MAGMA = new Color(0xFF6A3D);
+	/** saturn-gold: Level 30 Ring Dreadnought, phase 1 (GOG-81). */
+	public static final Color SATURN_GOLD = new Color(0xE8C867);
+	/** saturn-butterscotch: Ring Dreadnought in phase 2, at half health (GOG-81). */
+	public static final Color SATURN_BUTTERSCOTCH = new Color(0xD0913F);
 
 	/**
 	 * Colour the ship returns to once it is no longer a two-hit elite or

@@ -230,6 +230,24 @@ public final class DrawManager {
 		/** Act 4 (Deep Space) Void Mite, boom on death (GoG, GOG-86). */
 		Mite1,
 		Mite2,
+		/** Act 3 (Saturn) row 1, Ring Commander, two frames (GoG, GOG-28). */
+		RingCommander1,
+		RingCommander2,
+		/** Act 3 (Saturn) row 2, Halo Lancer, two frames (GoG, GOG-28). */
+		HaloLancer1,
+		HaloLancer2,
+		/** Act 3 (Saturn) row 3, Hex Sentinel, two frames (GoG, GOG-28). */
+		HexSentinel1,
+		HexSentinel2,
+		/** Act 3 (Saturn) row 4, Orbit Fighter, two frames (GoG, GOG-28). */
+		OrbitFighter1,
+		OrbitFighter2,
+		/** Act 3 (Saturn) row 5, Moonlet Pod, two frames (GoG, GOG-28). */
+		MoonletPod1,
+		MoonletPod2,
+		/** Level 30 boss Ring Dreadnought, two frames, 24 x 16 (GoG, GOG-81). */
+		RingDreadnought1,
+		RingDreadnought2,
 		/** Level 40 boss AI Commander, two frames, 24 x 16 (GoG, GOG-77). */
 		Commander1,
 		Commander2
@@ -350,6 +368,22 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.Mite1, new boolean[12][8]);
 			spriteMap.put(SpriteType.Mite2, new boolean[12][8]);
 
+			// Act 3 Saturn enemies (GoG, GOG-28)
+			spriteMap.put(SpriteType.RingCommander1, new boolean[12][8]);
+			spriteMap.put(SpriteType.RingCommander2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HaloLancer1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HaloLancer2, new boolean[12][8]);
+			spriteMap.put(SpriteType.HexSentinel1, new boolean[12][8]);
+			spriteMap.put(SpriteType.HexSentinel2, new boolean[12][8]);
+			spriteMap.put(SpriteType.OrbitFighter1, new boolean[12][8]);
+			spriteMap.put(SpriteType.OrbitFighter2, new boolean[12][8]);
+			spriteMap.put(SpriteType.MoonletPod1, new boolean[12][8]);
+			spriteMap.put(SpriteType.MoonletPod2, new boolean[12][8]);
+
+			// Level 30 boss Ring Dreadnought (GoG, GOG-81)
+			spriteMap.put(SpriteType.RingDreadnought1, new boolean[24][16]);
+			spriteMap.put(SpriteType.RingDreadnought2, new boolean[24][16]);
+
 			// Level 40 boss AI Commander (GoG, GOG-77)
 			spriteMap.put(SpriteType.Commander1, new boolean[24][16]);
 			spriteMap.put(SpriteType.Commander2, new boolean[24][16]);
@@ -462,17 +496,6 @@ public final class DrawManager {
 	}
 
 	/**
-	 * AUTHORED BY: VFX TEAM (Effection)
-	 *
-	 * Moves everything drawn after this call by the given offset.
-	 * Used for screen shake. Call setWorldOffset(0, 0) before the HUD.
-	 *
-	 * @param offsetX
-	 *            X offset in pixels.
-	 * @param offsetY
-	 *            Y offset in pixels.
-	 */
-	/**
 	 * Graphics of the frame being drawn, with the current world offset
 	 * (GoG, GOG-77: the AI Commander's laser and claws are drawn as shapes).
 	 *
@@ -495,6 +518,17 @@ public final class DrawManager {
 		return fontBig.deriveFont(bold ? Font.BOLD : Font.PLAIN, size);
 	}
 
+	/**
+	 * AUTHORED BY: VFX TEAM (Effection)
+	 *
+	 * Moves everything drawn after this call by the given offset.
+	 * Used for screen shake. Call setWorldOffset(0, 0) before the HUD.
+	 *
+	 * @param offsetX
+	 *            X offset in pixels.
+	 * @param offsetY
+	 *            Y offset in pixels.
+	 */
 	public void setWorldOffset(final int offsetX, final int offsetY) {
 		backBufferGraphics.translate(offsetX - worldOffsetX,
 				offsetY - worldOffsetY);
@@ -1910,6 +1944,21 @@ public final class DrawManager {
 		}
 	}
 
+
+	/**
+	 * Draws a full-screen story background (GOG-14). Call it right after
+	 * initDrawing so everything else is drawn on top.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param background
+	 *            Image to stretch over the whole screen.
+	 */
+	public void drawBackground(final Screen screen,
+			final BufferedImage background) {
+		backBufferGraphics.drawImage(background, 0, 0, screen.getWidth(),
+				screen.getHeight(), null);
+	}
 
 	/**
 	 * Draws the scrolling stars behind the main menu. Call it right after

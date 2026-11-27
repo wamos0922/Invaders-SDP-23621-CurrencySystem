@@ -147,8 +147,10 @@ public final class Act4EnemyTest {
             check(built == 7 * rows.length, "Level " + level + " enemy count");
         }
         check(previous == 5, "Level 39 is all special");
+        // Act 3 has its own Saturn enemies (GOG-28), none from Act 4.
         for (EnemyShip e : new EnemyShipFormation(StoryMode.getSettings(21)))
-            check(e.getType() == EnemyType.NORMAL, "Act 3 untouched");
+            check(e.getType() == EnemyType.RING_COMMANDER
+                    || e.getType() == EnemyType.MOONLET_POD, "Act 3 untouched by Act 4");
         check(C.hasAbility() && M.hasAbility() && S.hasAbility() && !K.hasAbility()
                 && !W.hasAbility(), "Abilities");
 
