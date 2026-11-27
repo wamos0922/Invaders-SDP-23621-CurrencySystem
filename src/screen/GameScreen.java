@@ -54,6 +54,7 @@ import entity.Particle;
 import entity.Ship;
 import item.ItemSystem;
 import skilltree.SkillArmor;
+import skilltree.SkillCapstones;
 import skilltree.SkillEffects;
 import skilltree.SkillSalvage;
 import skilltree.SkillShots;
@@ -323,6 +324,11 @@ public class GameScreen extends Screen {
 	private SkillArmor armor;
 	/** Specialty skill nodes that change shots and hits (GOG-89). */
 	private SkillShots skillShots;
+	/** Capstone skill nodes (GOG-91). */
+	private SkillCapstones capstones;
+	/** Left / right held last frame, to spot Blink Dash double-taps (GOG-91). */
+	private boolean leftWasDown;
+	private boolean rightWasDown;
 	/** Item slot keys (1-9) held last frame, so holding a key uses it once. */
 	private boolean[] itemSlotKeysHeld = new boolean[9];
 	/** Skin chosen in Customize; animated skins change colour each frame (GoG). */
@@ -538,6 +544,9 @@ public class GameScreen extends Screen {
 		// Armor skill nodes: Launch Shield starts when the countdown ends (GOG-89).
 		this.armor = new SkillArmor(this.skills, this.midBoss != null);
 		this.armor.startLevel(this.gameStartTime + INPUT_DELAY);
+		// Capstones: Bullet Storm counts from when play starts (GOG-91).
+		this.capstones = new SkillCapstones(this.skills,
+				this.gameStartTime + INPUT_DELAY);
 	}
 
 
@@ -600,7 +609,8 @@ public class GameScreen extends Screen {
 		// Skill nodes (GOG-89); Pickup Rush raises the fire rate for a while.
 		this.ship.setSkillBonuses(this.skills.multiplier(SkillStat.SPEED),
 				this.skills.multiplier(SkillStat.FIRE_RATE)
-						* this.skillShots.fireRateFactor(System.currentTimeMillis()),
+						* this.skillShots.fireRateFactor(System.currentTimeMillis())
+						* this.capstones.fireRateFactor(System.currentTimeMillis()),
 				this.skills.multiplier(SkillStat.BULLET_SPEED),
 				this.skills.multiplier(SkillStat.BULLET_SIZE));
 		// Animated skins (GoG); plain skins return the same colour.
@@ -644,6 +654,7 @@ public class GameScreen extends Screen {
 						|| inputManager.isKeyDown(KeyEvent.VK_D);
 				boolean moveLeft = inputManager.isKeyDown(KeyEvent.VK_LEFT)
 						|| inputManager.isKeyDown(KeyEvent.VK_A);
+				blinkDash(moveLeft, moveRight); // Blink Dash capstone (GOG-91)
 
 				boolean isRightBorder = this.ship.getPositionX()
 						+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
@@ -669,6 +680,9 @@ public class GameScreen extends Screen {
 						// Skill nodes change the new bullets (GOG-89).
 						this.skillShots.onShot(this.ship.getLastShot(),
 								moveLeft || moveRight);
+						this.capstones.onShot(this.ship.getLastShot(),
+								System.currentTimeMillis()); // Adaptive Core (GOG-91)
+						addMiddleBullet(); // Triple Barrel (GOG-91)
 					}
 				}
 			}
@@ -1049,6 +1063,10 @@ public class GameScreen extends Screen {
 		if (this.paused)
 			this.skillShots.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor the capstone timers: Bullet Storm, Adaptive Core, Blink Dash (GOG-91).
+		if (this.paused)
+			this.capstones.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
 	}
@@ -1271,6 +1289,69 @@ public class GameScreen extends Screen {
 	 * @param ship
 	 *            Ship that was destroyed.
 	 */
+	/**
+	 * Blink Dash capstone (GOG-91): a double-tap of left or right moves
+	 * the ship 80 px at once, kept on screen.
+	 *
+	 * @param leftDown
+	 *            Left held this frame.
+	 * @param rightDown
+	 *            Right held this frame.
+	 */
+	private void blinkDash(final boolean leftDown, final boolean rightDown) {
+		long now = System.currentTimeMillis();
+		int dash = 0;
+		if (leftDown && !this.leftWasDown)
+			dash = this.capstones.onDirectionPressed(-1, now);
+		if (rightDown && !this.rightWasDown)
+			dash = this.capstones.onDirectionPressed(1, now);
+		this.leftWasDown = leftDown;
+		this.rightWasDown = rightDown;
+		if (dash != 0)
+			this.ship.setPositionX(Math.max(1, Math.min(this.width - 1
+					- this.ship.getWidth(), this.ship.getPositionX() + dash)));
+	}
+
+	/**
+	 * Triple Barrel capstone (GOG-91): every 3rd volley gets a third bullet
+	 * straight up the middle.
+	 */
+	private void addMiddleBullet() {
+		if (this.ship.getLastShot().isEmpty()
+				|| !this.capstones.addsMiddleBullet())
+			return;
+		Bullet first = this.ship.getLastShot().get(0);
+		this.bullets.add(BulletPool.getBullet(this.ship.getPositionX()
+				+ this.ship.getWidth() / 2, first.getPositionY(),
+				first.getSpeed()));
+		this.bulletsShot++;
+	}
+
+	/**
+	 * Shockwave capstone (GOG-91): a kill also hits the enemies right next
+	 * to it, with the usual rewards. Those hits don't make new shockwaves.
+	 *
+	 * @param hit
+	 *            Enemy that was just destroyed.
+	 */
+	private void shockwave(final EnemyShip hit) {
+		if (!this.capstones.hasShockwave())
+			return;
+		int centerX = hit.getPositionX() + hit.getWidth() / 2;
+		int centerY = hit.getPositionY() + hit.getHeight() / 2;
+		List<EnemyShip> near = new ArrayList<EnemyShip>();
+		for (EnemyShip other : this.enemyShipFormation)
+			if (other != hit && !other.isDestroyed()
+					&& SkillCapstones.isNextTo(centerX, centerY, other))
+				near.add(other);
+		for (EnemyShip other : near) {
+			if (!other.takeDamage(1))
+				continue;
+			rewardKill(other);
+			this.enemyShipFormation.destroy(other);
+		}
+	}
+
 	private void spawnSparkles(final EnemyShip ship) {
 		float centerX = ship.getPositionX() + ship.getWidth() / 2f;
 		float centerY = ship.getPositionY() + ship.getHeight() / 2f;
@@ -1361,7 +1442,8 @@ public class GameScreen extends Screen {
 		this.ship.setPositionY(this.height - SHIP_ROW_FROM_BOTTOM);
 		if (INVINCIBLE)
 			return;
-		if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+		if (this.capstones.dashInvincible(System.currentTimeMillis()) // Blink Dash (GOG-91)
+				|| this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 			this.logger.info("Crashed into an enemy, blocked by Armor.");
 			return;
 		}
@@ -1405,7 +1487,8 @@ public class GameScreen extends Screen {
 				return;
 			if (INVINCIBLE)
 				continue;
-			if (this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
+			if (this.capstones.dashInvincible(System.currentTimeMillis()) // Blink Dash (GOG-91)
+					|| this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
 					|| this.items.tryBlockHit()) { // Shield item (Team CS)
 				this.midBoss.onPlayerHitBlocked();
 				this.logger.info("Boss attack blocked by a shield.");
@@ -1450,6 +1533,7 @@ public class GameScreen extends Screen {
 						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
 					} else if (!this.ship.isDestroyed() && !INVINCIBLE
+							&& !this.capstones.dashInvincible(System.currentTimeMillis()) // Blink Dash (GOG-91)
 							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
@@ -1541,6 +1625,7 @@ public class GameScreen extends Screen {
 							this.items.onEnemyDefeated(enemyShip, false);
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordEnemyDefeated());
+							shockwave(enemyShip); // Shockwave capstone (GOG-91)
 							// Piercing skill nodes let the bullet go on (GOG-89).
 							if (!this.skillShots.passThrough(bullet))
 								recyclable.add(bullet);
@@ -1665,7 +1750,8 @@ public class GameScreen extends Screen {
 			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS
 					|| INVINCIBLE)
 				continue;
-			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+			if (this.capstones.dashInvincible(System.currentTimeMillis()) // Blink Dash (GOG-91)
+					|| this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 				this.logger.info("Comet blast blocked by Armor.");
 				continue;
 			}
@@ -1698,7 +1784,8 @@ public class GameScreen extends Screen {
 			this.screenShake.trigger();
 			if (INVINCIBLE)
 				continue;
-			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
+			if (this.capstones.dashInvincible(System.currentTimeMillis()) // Blink Dash (GOG-91)
+					|| this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 				this.logger.info("Orbit Fighter crash blocked by Armor.");
 				continue;
 			}
