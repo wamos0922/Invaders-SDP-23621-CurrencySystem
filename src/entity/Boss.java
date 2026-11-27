@@ -25,6 +25,28 @@ public interface Boss {
     /** False while the boss should not be drawn (e.g. flickering). */
     default boolean isVisible() { return true; }
 
+    /**
+     * Draws the boss itself (GameScreen calls it only while visible). By
+     * default its sprite; a boss with its own multi-colour art draws it
+     * here (GoG, GOG-77).
+     *
+     * @param drawManager Draw manager.
+     */
+    default void drawBody(final DrawManager drawManager) {
+        Entity self = (Entity) this;
+        drawManager.drawEntity(self, self.getPositionX(), self.getPositionY());
+    }
+
+    /**
+     * True if a player bullet that reached the boss's box really touches
+     * it. By default the whole box counts; a boss with gaps in its art lets
+     * bullets fly through them (GoG, GOG-77).
+     *
+     * @param bullet Player bullet inside the boss's box.
+     * @return True if the bullet hits the boss.
+     */
+    default boolean isHitBy(final Bullet bullet) { return true; }
+
     /** Draws attack and movement warnings, such as incoming bullet rain. */
     default void drawWarnings(final DrawManager drawManager) { }
 
@@ -59,4 +81,36 @@ public interface Boss {
     default java.util.List<EnemyShip> getMinions() {
         return java.util.Collections.emptyList();
     }
+
+    /**
+     * Hits the boss landed on the player since the last call, other than
+     * bullets (GoG, GOG-77: the AI Commander's laser and claw). GameScreen
+     * calls it every frame and takes a life (or the shield) for each.
+     *
+     * @param ship The player ship.
+     * @return Number of hits, usually 0.
+     */
+    default int takePlayerHits(final Entity ship) { return 0; }
+
+    /**
+     * Called when the player's shield blocked one of the hits from
+     * {@link #takePlayerHits(Entity)} (GoG, GOG-77).
+     */
+    default void onPlayerHitBlocked() { }
+
+    /**
+     * Extra screen shake the boss wants this frame, added to the game's own
+     * shake (GoG, GOG-77), or null for none.
+     *
+     * @return Offset in pixels, or null.
+     */
+    default java.awt.Point getShakeOffset() { return null; }
+
+    /**
+     * Draws on top of everything, without screen shake (GoG, GOG-77: the
+     * claw's screen flash and "SHIELD BROKEN").
+     *
+     * @param drawManager Draw manager.
+     */
+    default void drawOverlay(final DrawManager drawManager) { }
 }

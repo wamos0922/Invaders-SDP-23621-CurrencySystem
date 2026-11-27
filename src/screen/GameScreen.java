@@ -46,6 +46,7 @@ import entity.Boss;
 import entity.EnemyType;
 import entity.FinalBoss;
 import entity.TempestQueen;
+import entity.AICommander;
 import entity.EnemyShipFormation;
 import entity.RingDreadnought;
 import entity.Entity;
@@ -112,6 +113,8 @@ public class GameScreen extends Screen {
 	private static final int ACHIEVEMENT_POPUP_SLIDE_OUT = 350;
 	/** Height of the interface separation line. */
 	private static final int SEPARATION_LINE_HEIGHT = 40;
+	/** Distance between the lines of a boss warning (GOG-77). */
+	private static final int WARNING_LINE_HEIGHT = 22;
 	/** Speed of a Mite's shrapnel bullets (GOG-86). */
 	private static final int MITE_SHRAPNEL_SPEED = 4;
 	/**
@@ -288,6 +291,8 @@ public class GameScreen extends Screen {
 	private LightningChain lightningChain;
 	/** Test switch: java -Dvfx.lightning=true turns it on without buying. */
 	private static final boolean LIGHTNING_ON = Boolean.getBoolean("vfx.lightning");
+	/** Test switch: java -Dgame.invincible=true never loses a life (GOG-77 testing). */
+	private static final boolean INVINCIBLE = Boolean.getBoolean("game.invincible");
 	/** True when Lightning Chain is bought and switched on (or the test switch is on). */
 	private boolean lightningOn;
 	/** Glitch effect for low health. */
@@ -429,13 +434,16 @@ public class GameScreen extends Screen {
 				&& this.level % 10 == 0) {
 			// GOG-74: level 10 is the AI Warship; GOG-75: level 20 is the
 			// Tempest Queen; GOG-76: level 30 is the Ring Dreadnought;
-			// level 40 keeps the placeholder until its boss is built.
+			// GOG-77: level 40 is the AI Commander.
 			if (this.level == 10)
 				this.midBoss = new AIWarship(this.width / 2 - 24, 100);
 			else if (this.level == 20)
 				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
 			else if (this.level == 30)
 				this.midBoss = new RingDreadnought(this.width / 2 - 24, 100);
+			else if (this.level == 40)
+				this.midBoss = new AICommander(
+						this.width / 2 - AICommander.WIDTH / 2, AICommander.SPAWN_Y);
 			else
 				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
 						DrawManager.SpriteType.FinalBoss1);
@@ -682,6 +690,7 @@ public class GameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.midBoss.shoot(this.bullets, this.gameSettings);
+				manageBossAttackHits(); // AI Commander laser and claw (GOG-77)
 			} else {
 				if (!this.items.enemiesFrozen()) {
 					this.enemyShipFormation.update();
@@ -1059,8 +1068,7 @@ public class GameScreen extends Screen {
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
 			this.screenShake.update();
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
+			drawManager.setWorldOffset(shakeX(), shakeY());
 
 			// Ship, enemies, bullets and falling coins are hidden while
 			// paused, so the pause menu isn't cluttered by the frozen
@@ -1107,8 +1115,7 @@ public class GameScreen extends Screen {
 
 			if (this.midBoss != null) {
 				if (this.midBoss.isVisible())
-					drawManager.drawEntity((Entity) this.midBoss,
-							this.midBoss.getPositionX(), this.midBoss.getPositionY());
+					this.midBoss.drawBody(drawManager); // own art, GOG-77
 				this.midBoss.drawWarnings(drawManager);
 			} else {
 				this.enemyShipFormation.draw();
@@ -1132,8 +1139,7 @@ public class GameScreen extends Screen {
 			drawManager.drawDamageDim(this, this.damageDim);
 
 			// Coins are part of the game world, so they shake too.
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
+			drawManager.setWorldOffset(shakeX(), shakeY());
 			for (Coin coin : this.coins)
 				drawManager.drawCoin(coin, coin.getPositionX(),
 						coin.getPositionY());
@@ -1141,6 +1147,9 @@ public class GameScreen extends Screen {
 			drawManager.drawItemDrops(this.items); // Item System (Team CS)
 			// HUD must stay still: remove shake offset.
 			drawManager.setWorldOffset(0, 0);
+			// Boss full-screen effects, e.g. the claw flash (GOG-77).
+			if (this.midBoss != null)
+				this.midBoss.drawOverlay(drawManager);
 			// Black hole scene ends by fading to black (GOG-74).
 			if (this.blackHole != null)
 				drawManager.drawFadeOverlay(this,
@@ -1175,11 +1184,17 @@ public class GameScreen extends Screen {
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.
 		drawManager.drawBossHealthBar(this, this.midBoss, 64);
-		// Blinking boss warning before the boss appears (GOG-75).
+		// Blinking boss warning before the boss appears (GOG-75). A boss can
+		// give more than one line, split by "\n", centred as a block (GOG-77).
 		if (this.midBoss != null && this.midBoss.getWarningText() != null
-				&& (System.currentTimeMillis() / 250) % 2 == 0)
-			drawManager.drawCenteredRegularString(this,
-					this.midBoss.getWarningText(), this.height / 2, Color.RED);
+				&& (System.currentTimeMillis() / 250) % 2 == 0) {
+			String[] lines = this.midBoss.getWarningText().split("\n");
+			int top = this.height / 2
+					- (lines.length - 1) * WARNING_LINE_HEIGHT / 2;
+			for (int i = 0; i < lines.length; i++)
+				drawManager.drawCenteredRegularString(this, lines[i],
+						top + i * WARNING_LINE_HEIGHT, Color.RED);
+		}
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
 		drawManager.drawGlitch(this, this.glitch);
@@ -1326,6 +1341,8 @@ public class GameScreen extends Screen {
 		// Back to the starting row, so the ship does not crash again
 		// straight away into the enemies next to the one it hit.
 		this.ship.setPositionY(this.height - SHIP_ROW_FROM_BOTTOM);
+		if (INVINCIBLE)
+			return;
 		if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 			this.logger.info("Crashed into an enemy, blocked by Armor.");
 			return;
@@ -1342,6 +1359,49 @@ public class GameScreen extends Screen {
 		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
 		this.logger.info("Crashed into an enemy, " + this.lives
 				+ " lives remaining.");
+	}
+
+	/** @return Screen shake x, plus the boss's own shake (GOG-77). */
+	private int shakeX() {
+		java.awt.Point boss = this.midBoss != null
+				? this.midBoss.getShakeOffset() : null;
+		return this.screenShake.getOffsetX() + (boss != null ? boss.x : 0);
+	}
+
+	/** @return Screen shake y, plus the boss's own shake (GOG-77). */
+	private int shakeY() {
+		java.awt.Point boss = this.midBoss != null
+				? this.midBoss.getShakeOffset() : null;
+		return this.screenShake.getOffsetY() + (boss != null ? boss.y : 0);
+	}
+
+	/**
+	 * Boss attacks that aren't bullets (GOG-77: AI Commander laser and Claw
+	 * Slam). Each hit takes a life, or only the shield.
+	 */
+	private void manageBossAttackHits() {
+		int hits = this.midBoss.takePlayerHits(this.ship);
+		for (int i = 0; i < hits; i++) {
+			if (this.levelFinished || this.ship.isDestroyed()
+					|| this.lives <= 0)
+				return;
+			if (INVINCIBLE)
+				continue;
+			if (this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
+					|| this.items.tryBlockHit()) { // Shield item (Team CS)
+				this.midBoss.onPlayerHitBlocked();
+				this.logger.info("Boss attack blocked by a shield.");
+				continue;
+			}
+			this.ship.destroy();
+			this.lives--;
+			this.armor.onLifeLost(this.lives, System.currentTimeMillis()); // GOG-89
+			PlayerSounds.playHit(this.lives);
+			this.tookDamage = true;
+			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+			this.logger.info("Hit by a boss attack, " + this.lives
+					+ " lives remaining.");
+		}
 	}
 
 	/**
@@ -1364,7 +1424,7 @@ public class GameScreen extends Screen {
 						// Polar freeze bullet: locks the ship, no life lost (GOG-84).
 						if (this.ship.freeze())
 							this.logger.info("Player ship frozen by a Polar bullet.");
-					} else if (!this.ship.isDestroyed()
+					} else if (!this.ship.isDestroyed() && !INVINCIBLE
 							&& !this.armor.tryBlockHit(System.currentTimeMillis()) // Armor skill nodes (GOG-89)
 							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
 						this.ship.destroy();
@@ -1392,7 +1452,8 @@ public class GameScreen extends Screen {
 					if (hitBossMinion(bullet)) {
 						recyclable.add(bullet);
 					} else if (!this.midBoss.isDestroyed()
-							&& checkCollision(bullet, (Entity) this.midBoss)) {
+							&& checkCollision(bullet, (Entity) this.midBoss)
+							&& this.midBoss.isHitBy(bullet)) { // gaps in the art, GOG-77
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
 						if (this.midBoss.isDestroyed()) {
 							this.shipsDestroyed++;
@@ -1566,7 +1627,8 @@ public class GameScreen extends Screen {
 					- blast.x;
 			double dy = this.ship.getPositionY() + this.ship.getHeight() / 2.0
 					- blast.y;
-			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS)
+			if (Math.sqrt(dx * dx + dy * dy) > EnemyType.COMET_BLAST_RADIUS
+					|| INVINCIBLE)
 				continue;
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 				this.logger.info("Comet blast blocked by Armor.");
@@ -1599,6 +1661,8 @@ public class GameScreen extends Screen {
 		for (int i = 0; i < crashes && this.lives > 0
 				&& !this.ship.isDestroyed(); i++) {
 			this.screenShake.trigger();
+			if (INVINCIBLE)
+				continue;
 			if (this.armor.tryBlockHit(System.currentTimeMillis())) { // Armor skill nodes (GOG-89)
 				this.logger.info("Orbit Fighter crash blocked by Armor.");
 				continue;
@@ -1666,7 +1730,7 @@ public class GameScreen extends Screen {
 	 */
 	private void startVulnerable() {
 		if (this.vulnerableActive || this.ship.isDestroyed()
-				|| this.lives <= 0)
+				|| this.lives <= 0 || INVINCIBLE)
 			return;
 		this.vulnerableActive = true;
 		this.livesBeforeVulnerable = this.lives;

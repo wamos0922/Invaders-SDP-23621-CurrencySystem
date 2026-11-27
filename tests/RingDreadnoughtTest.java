@@ -9,9 +9,9 @@ import engine.Core;
 import engine.DrawManager.SpriteType;
 import engine.GameState;
 import engine.StoryMode;
+import entity.AICommander;
 import entity.Bullet;
 import entity.EnemyShip;
-import entity.FinalBoss;
 import entity.RingDreadnought;
 import screen.GameScreen;
 
@@ -285,7 +285,7 @@ public final class RingDreadnoughtTest {
         GameScreen level40 = new GameScreen(new GameState(40, 0, 3, 0, 0, 0),
                 StoryMode.getSettings(40), false, WIDTH, 520, 60);
         level40.initialize();
-        check(get(level40, "midBoss") instanceof FinalBoss, "Level 40 keeps the placeholder");
+        check(get(level40, "midBoss") instanceof AICommander, "Level 40 is the AI Commander (GOG-77)");
 
         // GameScreen removes pellets once they pass their range.
         @SuppressWarnings("unchecked")

@@ -215,11 +215,13 @@ public final class FinalBossAttackTest {
     }
 
     private static void pausePreservesBossWarningsAndGracePeriod() throws Exception {
-        // Level 40: levels 10 and 30 have their own bosses (GOG-74, GOG-76).
+        // Every story boss level has its own boss now (GOG-74 to GOG-77), so
+        // the placeholder is put into a level 40 screen by hand.
         GameScreen screen = new GameScreen(new GameState(40, 0, 3, 0, 0, 0),
                 SETTINGS, false, WIDTH, HEIGHT, 60);
         screen.initialize();
-        FinalBoss boss = (FinalBoss) get(screen, "midBoss");
+        FinalBoss boss = boss(WIDTH / 2 - 24, 60);
+        set(screen, "midBoss", boss);
         boss.moveBoss(WIDTH, HEIGHT, SETTINGS);
         call(boss, "startBulletRain");
         call(boss, "startTeleport", WIDTH, HEIGHT);

@@ -489,6 +489,29 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Graphics of the frame being drawn, with the current world offset
+	 * (GoG, GOG-77: the AI Commander's laser and claws are drawn as shapes).
+	 *
+	 * @return Back-buffer graphics.
+	 */
+	public java.awt.Graphics2D getWorldGraphics() {
+		return (java.awt.Graphics2D) backBufferGraphics;
+	}
+
+	/**
+	 * The game's pixel font (Silkscreen) at any size (GoG, GOG-77).
+	 *
+	 * @param size
+	 *            Font size in pixels.
+	 * @param bold
+	 *            True for bold.
+	 * @return The font.
+	 */
+	public Font getPixelFont(final float size, final boolean bold) {
+		return fontBig.deriveFont(bold ? Font.BOLD : Font.PLAIN, size);
+	}
+
+	/**
 	 * AUTHORED BY: VFX TEAM (Effection)
 	 *
 	 * Moves everything drawn after this call by the given offset.
