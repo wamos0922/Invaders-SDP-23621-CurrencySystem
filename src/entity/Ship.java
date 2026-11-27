@@ -1,6 +1,11 @@
 package entity;
 
+
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import engine.Cooldown;
@@ -126,6 +131,8 @@ public class Ship extends Entity {
 	private double moveCarry;
 	/** Current time between shots, in milliseconds. */
 	private int shootingIntervalMillis;
+	/** Bullets of the last shot, for skill nodes (GOG-89). */
+	private final List<Bullet> lastShot = new ArrayList<Bullet>();
 
 	/**
 	 * AUTHORED BY: VFX TEAM (effection)
@@ -229,6 +236,7 @@ public class Ship extends Entity {
 			return false;
 		if (this.shootingCooldown.checkFinished()) {
 						this.shootingCooldown.reset();
+			Set<Bullet> before = new HashSet<Bullet>(bullets);
 			final int centerX = positionX + this.width / 2;
 			final int bulletSpeed = (int) Math.round(BULLET_SPEED
 					* this.skillBulletSpeed)
@@ -248,6 +256,11 @@ public class Ship extends Entity {
 				bullets.add(BulletPool.getBullet(centerX, positionY,
 						bulletSpeed));
 			}
+			// Remember this shot's bullets for skill nodes (GOG-89).
+			this.lastShot.clear();
+			for (Bullet bullet : bullets)
+				if (!before.contains(bullet))
+					this.lastShot.add(bullet);
 			return true;
 		}
 		return false;
@@ -326,6 +339,12 @@ public class Ship extends Entity {
 				* this.skillFireRate + this.itemFireRateBonus;
 		this.shootingIntervalMillis = (int) Math.round(1000.0 / perSecond);
 		this.shootingCooldown = Core.getCooldown(this.shootingIntervalMillis);
+	}
+
+	/** @return The bullets of the last shot, left to right (GOG-89). */
+	public final List<Bullet> getLastShot() {
+		this.lastShot.sort((a, b) -> a.getPositionX() - b.getPositionX());
+		return Collections.unmodifiableList(this.lastShot);
 	}
 
 	/**

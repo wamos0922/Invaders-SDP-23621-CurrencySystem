@@ -33,6 +33,10 @@ public class Bullet extends Entity {
 	 * by default.
 	 */
 	private int maxY = Integer.MAX_VALUE;
+	/** Enemies this bullet can still go through (skill nodes, GOG-89). */
+	private int pierce;
+	/** Shot (volley) the bullet belongs to; 0 = none (GOG-89). */
+	private long volley;
 
 	/**
 	 * Constructor, establishes the bullet's properties.
@@ -135,6 +139,26 @@ public class Bullet extends Entity {
 	 */
 	public final boolean isFreezing() {
 		return this.freezing;
+	}
+
+	/** @return Enemies this bullet can still go through (GOG-89). */
+	public final int getPierce() {
+		return this.pierce;
+	}
+
+	/** @param pierce Enemies this bullet can go through (GOG-89). */
+	public final void setPierce(final int pierce) {
+		this.pierce = Math.max(0, pierce);
+	}
+
+	/** @return Shot (volley) the bullet belongs to; 0 = none (GOG-89). */
+	public final long getVolley() {
+		return this.volley;
+	}
+
+	/** @param volley Shot (volley) the bullet belongs to (GOG-89). */
+	public final void setVolley(final long volley) {
+		this.volley = volley;
 	}
 
 	/**

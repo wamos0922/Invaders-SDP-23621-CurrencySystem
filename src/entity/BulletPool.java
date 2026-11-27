@@ -79,6 +79,8 @@ public final class BulletPool {
 		bullet.setFreezing(false);
 		bullet.setVulnerable(false);
 		bullet.setMaxY(Integer.MAX_VALUE);
+		bullet.setPierce(0); // skill nodes (GOG-89)
+		bullet.setVolley(0);
 		bullet.setSprite();
 	}
 
