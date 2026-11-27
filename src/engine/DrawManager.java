@@ -247,10 +247,7 @@ public final class DrawManager {
 		MoonletPod2,
 		/** Level 30 boss Ring Dreadnought, two frames, 24 x 16 (GoG, GOG-81). */
 		RingDreadnought1,
-		RingDreadnought2,
-		/** Level 40 boss AI Commander, two frames, 24 x 16 (GoG, GOG-77). */
-		Commander1,
-		Commander2
+		RingDreadnought2
 	};
 
 	/**
@@ -383,10 +380,6 @@ public final class DrawManager {
 			// Level 30 boss Ring Dreadnought (GoG, GOG-81)
 			spriteMap.put(SpriteType.RingDreadnought1, new boolean[24][16]);
 			spriteMap.put(SpriteType.RingDreadnought2, new boolean[24][16]);
-
-			// Level 40 boss AI Commander (GoG, GOG-77)
-			spriteMap.put(SpriteType.Commander1, new boolean[24][16]);
-			spriteMap.put(SpriteType.Commander2, new boolean[24][16]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
