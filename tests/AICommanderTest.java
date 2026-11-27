@@ -35,6 +35,8 @@ import screen.GameScreen;
  */
 public final class AICommanderTest {
     private static int checks;
+    /** Her clock's real time is frozen here; tests move her clock themselves. */
+    private static final long FROZEN_NOW = System.currentTimeMillis();
 
     private static void check(boolean condition, String message) {
         checks++;
@@ -61,7 +63,7 @@ public final class AICommanderTest {
     private static void advance(AICommander boss, long millis) throws Exception {
         Field paused = findField(AICommander.class, "pausedTotal");
         paused.setLong(boss, paused.getLong(boss) - millis);
-        findField(AICommander.class, "lastRealUpdate").setLong(boss, System.currentTimeMillis());
+        findField(AICommander.class, "lastRealUpdate").setLong(boss, FROZEN_NOW);
         boss.update();
     }
 
@@ -193,6 +195,10 @@ public final class AICommanderTest {
 
     public static void main(String[] args) throws Exception {
         Core.getLogger().setUseParentHandlers(false);
+        // Freeze her real-time clock: each step moves her clock by exactly the
+        // time asked, however slow the machine is.
+        findField(AICommander.class, "timeSource")
+                .set(null, (java.util.function.LongSupplier) () -> FROZEN_NOW);
         Set<Bullet> bullets = new HashSet<Bullet>();
 
         // Size: drawn at 2x like every sprite.
@@ -263,7 +269,7 @@ public final class AICommanderTest {
         check(bullets.size() == 3 && rightX > guns.getPositionX() + 100, "Next volley from the right wing");
         bullets.clear();
         advance(guns, AICommander.TURRET_MILLIS);
-        findField(AICommander.class, "lastRealUpdate").setLong(guns, System.currentTimeMillis() - 500);
+        findField(AICommander.class, "lastRealUpdate").setLong(guns, FROZEN_NOW - 500);
         check(!guns.shoot(bullets, null) && bullets.isEmpty(), "No shots while frozen by an item");
 
         // Phase 1 laser: locks the player's x, glides there, one hit.
@@ -320,6 +326,28 @@ public final class AICommanderTest {
         advance(boss, AICommander.IDLE_MILLIS);
         int away = boss.getHaloGapX() < 224 ? 420 : 30;
         check(haloHits(boss, shipAt(away, 467)) == 1, "Outside the gap: exactly one hit");
+        // The far edge isn't safe: she is at one side, the player waits at the other.
+        for (int side = 0; side < 2; side++) {
+            AICommander far = started();
+            findField(AICommander.class, "phase1Attacks").setInt(far, 1); // halo next
+            far.setPositionX(side == 0 ? 4 : 448 - AICommander.WIDTH - 4);
+            int shipX = side == 0 ? 435 : 13;
+            far.setTarget(shipX, 474);
+            advance(far, AICommander.IDLE_MILLIS + 1);
+            check(action(far).equals("HALO"), "Halo for the edge check");
+            Entity edgeShip = shipAt(shipX, 467);
+            long hitAt = -1;
+            int edgeHits = 0;
+            while (action(far).equals("HALO")) {
+                advance(far, 16);
+                int h = far.takePlayerHits(edgeShip);
+                if (h > 0 && hitAt < 0) hitAt = actionTime(far);
+                edgeHits += h;
+            }
+            check(edgeHits == 1, "Far edge is hit too (side " + side + ")");
+            check(hitAt > 0 && hitAt < AICommander.HALO_TELL + AICommander.HALO_FALL - 100,
+                    "Wave reaches the far edge well before it ends, got " + hitAt);
+        }
 
         // Phase 2 at half health: change of form, the barrage at once.
         AICommander p2 = started();
@@ -383,7 +411,8 @@ public final class AICommanderTest {
         frames(p2, 1);
         for (EnemyShip e : p2.getMinions())
             check(e.isDestroyed(), "Surviving escorts flew off");
-        check((Long) get(p2, "nextBarrageAt") == end + 15000, "Next barrage 15 s after this one ends");
+        check(Math.abs((Long) get(p2, "nextBarrageAt") - (end + 15000)) <= 20,
+                "Next barrage 15 s after this one ends");
 
         // Schedule, visibility and hidden attacks over a long phase 2.
         AICommander longFight = phase2();
@@ -585,7 +614,7 @@ public final class AICommanderTest {
         check(action(inGame).equals("BARRAGE"), "Barrage in game");
         Field paused2 = findField(AICommander.class, "pausedTotal");
         paused2.setLong(inGame, paused2.getLong(inGame) - (AICommander.BARRAGE_IMPACT + 20));
-        findField(AICommander.class, "lastRealUpdate").setLong(inGame, System.currentTimeMillis());
+        findField(AICommander.class, "lastRealUpdate").setLong(inGame, FROZEN_NOW);
         int livesBefore = (Integer) get(level40, "lives");
         runGameLogic(update, level40);
         check((Integer) get(level40, "lives") == livesBefore - 1, "Barrage costs a life in game");

@@ -176,6 +176,13 @@ public class AICommander extends Entity implements Boss {
 	public static final int HALO_GAP_MIN_DISTANCE = 90;
 	/** Thickness of the wave's damage band. */
 	public static final int HALO_THICKNESS = 8;
+	/** Half-width the wave's curve grows to by the end of its fall. */
+	private static final int HALO_END_WIDTH = 800;
+	/**
+	 * At the far screen edge the wave ends this far below the ground, so it
+	 * passes the player's row there at about 80% of its fall.
+	 */
+	private static final int HALO_OVERSHOOT = 60;
 
 	// ---- Phase 2 ----
 
@@ -378,6 +385,13 @@ public class AICommander extends Entity implements Boss {
 	private int screenHeight = 496;
 	private final Random random = new Random();
 
+	/**
+	 * Where her clock reads real time. Tests swap it for a frozen clock so
+	 * a slow machine can't add time between their steps.
+	 */
+	private static java.util.function.LongSupplier timeSource =
+			System::currentTimeMillis;
+
 	/** Art drawn once into images (form 1, form 2, escort). */
 	private static BufferedImage form1Image;
 	private static BufferedImage form2Image;
@@ -397,9 +411,14 @@ public class AICommander extends Entity implements Boss {
 		this.spriteType = SpriteType.Explosion; // only seen once destroyed
 	}
 
+	/** @return Real time, from {@link #timeSource}. */
+	private static long realTime() {
+		return timeSource.getAsLong();
+	}
+
 	/** @return Her clock: real time minus pauses and freezes. */
 	private long now() {
-		return System.currentTimeMillis() - this.pausedTotal;
+		return realTime() - this.pausedTotal;
 	}
 
 	@Override
@@ -407,7 +426,7 @@ public class AICommander extends Entity implements Boss {
 		if (this.started)
 			return;
 		this.started = true;
-		this.lastRealUpdate = System.currentTimeMillis();
+		this.lastRealUpdate = realTime();
 		long now = now();
 		this.introEndsAt = now + INTRO_MILLIS;
 		this.nextTurretAt = this.introEndsAt + TURRET_FIRST_MILLIS;
@@ -600,7 +619,7 @@ public class AICommander extends Entity implements Boss {
 	public final void update() {
 		if (!this.started || this.destroyed)
 			return;
-		long real = System.currentTimeMillis();
+		long real = realTime();
 		long gap = real - this.lastRealUpdate;
 		if (gap > FROZEN_GAP_MILLIS)
 			this.pausedTotal += gap; // frozen by an item: stop her clock too
@@ -768,7 +787,7 @@ public class AICommander extends Entity implements Boss {
 			final GameSettings settings) {
 		if (!this.started || this.destroyed || isIntro())
 			return false;
-		if (System.currentTimeMillis() - this.lastRealUpdate > FROZEN_GAP_MILLIS)
+		if (realTime() - this.lastRealUpdate > FROZEN_GAP_MILLIS)
 			return false; // frozen by an item
 		long now = now();
 		boolean fired = false;
@@ -954,8 +973,14 @@ public class AICommander extends Entity implements Boss {
 		if (u <= 0)
 			return Double.NaN;
 		u = Math.min(1.0, u);
-		double rx = 40 + 760 * u;
-		double ry = (groundY() + 12 - this.haloCenterY) * u;
+		double rx = 40 + (HALO_END_WIDTH - 40) * u;
+		// Deep enough that even at the far screen edge the front ends below
+		// the ground, so it sweeps past the player's row everywhere well
+		// before it stops hurting (the edges are not safe).
+		double farDx = Math.max(this.haloCenterX, this.screenWidth - this.haloCenterX);
+		double edge = Math.sqrt(Math.max(0.05,
+				1 - (farDx / HALO_END_WIDTH) * (farDx / HALO_END_WIDTH)));
+		double ry = (groundY() + HALO_OVERSHOOT - this.haloCenterY) / edge * u;
 		double dx = (x - this.haloCenterX) / rx;
 		if (Math.abs(dx) >= 1)
 			return Double.NaN;

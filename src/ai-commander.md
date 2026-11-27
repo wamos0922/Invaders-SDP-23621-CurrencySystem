@@ -104,8 +104,9 @@ during one.
 
 ## Test
 
-`tests/AICommanderTest.java` (133 checks): intro, art, weak point and gaps,
-turrets, laser lock / glide / corners / hit window, halo gap, phase 2 entry,
+`tests/AICommanderTest.java` (139 checks): intro, art, weak point and gaps,
+turrets, laser lock / glide / corners / hit window, halo gap (also at the
+far screen edge), phase 2 entry,
 escort wall (no gaps, shields, 2 hits), unavoidable barrage, the 15 / 10 / 5
 / 3 s schedule over 80 s, hidden share, triple quiet laser, halo shards, eye
 stream, dev switch, pause, freeze, drawing every state, kill, and through
