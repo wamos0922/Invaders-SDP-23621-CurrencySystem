@@ -56,6 +56,7 @@ import item.ItemSystem;
 import skilltree.SkillArmor;
 import skilltree.SkillEffects;
 import skilltree.SkillSalvage;
+import skilltree.SkillShots;
 import skilltree.SkillStat;
 import item.ItemAPI.EventType;
 import item.ItemAPI.ItemEvent;
@@ -320,6 +321,8 @@ public class GameScreen extends Screen {
 	private SkillEffects skills;
 	/** Armor skill nodes in this level: shields and blocked hits (GOG-89). */
 	private SkillArmor armor;
+	/** Specialty skill nodes that change shots and hits (GOG-89). */
+	private SkillShots skillShots;
 	/** Item slot keys (1-9) held last frame, so holding a key uses it once. */
 	private boolean[] itemSlotKeysHeld = new boolean[9];
 	/** Skin chosen in Customize; animated skins change colour each frame (GoG). */
@@ -465,6 +468,7 @@ public class GameScreen extends Screen {
 		this.ship.setShapeSprite(shape == null ? null : shape.getSprite());
 		// Skill tree nodes unlocked for this ship (GOG-89).
 		this.skills = SkillEffects.forShip(this.ship.getType());
+		this.skillShots = new SkillShots(this.skills);
 		this.ship.setSkillBonuses(this.skills.multiplier(SkillStat.SPEED),
 				this.skills.multiplier(SkillStat.FIRE_RATE),
 				this.skills.multiplier(SkillStat.BULLET_SPEED),
@@ -593,6 +597,12 @@ public class GameScreen extends Screen {
 				this.items.fireRateBonus(this.ship.getBaseFireRate()),
 				this.items.bulletSpeedBonus(),
 				this.items.movementSpeedBonus(this.ship.getBaseSpeed()));
+		// Skill nodes (GOG-89); Pickup Rush raises the fire rate for a while.
+		this.ship.setSkillBonuses(this.skills.multiplier(SkillStat.SPEED),
+				this.skills.multiplier(SkillStat.FIRE_RATE)
+						* this.skillShots.fireRateFactor(System.currentTimeMillis()),
+				this.skills.multiplier(SkillStat.BULLET_SPEED),
+				this.skills.multiplier(SkillStat.BULLET_SIZE));
 		// Animated skins (GoG); plain skins return the same colour.
 		this.ship.setSkinColor(this.skin.colorAt(System.currentTimeMillis()));
 
@@ -652,10 +662,14 @@ public class GameScreen extends Screen {
 					moveFreeRoam();
 				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
 					// Count bullets, not trigger pulls: Two Way fires two at
-					// once, and accuracy is kills per bullet.
+										// once, and accuracy is kills per bullet.
 					int bulletsBefore = this.bullets.size();
-					if (this.ship.shoot(this.bullets))
+					if (this.ship.shoot(this.bullets)) {
 						this.bulletsShot += this.bullets.size() - bulletsBefore;
+						// Skill nodes change the new bullets (GOG-89).
+						this.skillShots.onShot(this.ship.getLastShot(),
+								moveLeft || moveRight);
+					}
 				}
 			}
 			if (!this.ship.isDestroyed())
@@ -1030,6 +1044,10 @@ public class GameScreen extends Screen {
 		// Nor the Armor skill shields (GOG-89).
 		if (this.paused)
 			this.armor.resumeAfterPause(
+					System.currentTimeMillis() - this.pauseStartedAt);
+		// Nor Pickup Rush (GOG-89).
+		if (this.paused)
+			this.skillShots.resumeAfterPause(
 					System.currentTimeMillis() - this.pauseStartedAt);
 		this.paused = false;
 		this.pauseStartedAt = 0;
@@ -1414,6 +1432,13 @@ public class GameScreen extends Screen {
 		Set<Bullet> reflected = new HashSet<Bullet>();
 		for (Bullet bullet : this.bullets) {
 			if (bullet.getSpeed() > 0) {
+				if (!this.levelFinished && !this.ship.isDestroyed()
+						&& !checkCollision(bullet, this.ship)
+						&& this.skillShots.nearMiss(bullet, this.ship)) {
+					this.score += SkillShots.NEAR_MISS_SCORE; // Near Miss (GOG-89)
+					this.pointsEffect.spawn(bullet.getPositionX(),
+							this.ship.getPositionY(), SkillShots.NEAR_MISS_SCORE);
+				}
 				if (checkCollision(bullet, this.ship) && !this.levelFinished
 						&& !recyclable.contains(bullet)) {
 					recyclable.add(bullet);
@@ -1455,6 +1480,10 @@ public class GameScreen extends Screen {
 							&& checkCollision(bullet, (Entity) this.midBoss)
 							&& this.midBoss.isHitBy(bullet)) { // gaps in the art, GOG-77
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
+						// Heavy Impact: every 5th boss hit counts twice (GOG-89).
+						if (!this.midBoss.isDestroyed()
+								&& this.skillShots.heavyImpact())
+							this.score += this.midBoss.manageCollisionsBoss(bullet);
 						if (this.midBoss.isDestroyed()) {
 							this.shipsDestroyed++;
 							this.screenShake.trigger();
@@ -1469,17 +1498,18 @@ public class GameScreen extends Screen {
 					for (EnemyShip enemyShip : this.enemyShipFormation) {
 						if (!enemyShip.isDestroyed()
 								&& checkCollision(bullet, enemyShip)) {
-							recyclable.add(bullet);
 							// Comet: the first hit sends it diving at the
 							// player instead of killing it (GOG-86).
 							if (this.enemyShipFormation.startDive(enemyShip,
 									this.ship)) {
+								recyclable.add(bullet);
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
 								continue;
 							}
 							// Surviving hits consume the bullet without awarding kill rewards.
 							boolean shielded = enemyShip.getShield() > 0;
 							if (!enemyShip.takeDamage(1)) {
+								recyclable.add(bullet);
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
 								// Hex Sentinel: its shield sends the bullet
 								// back at the player (GOG-85).
@@ -1489,7 +1519,10 @@ public class GameScreen extends Screen {
 											reflected);
 								continue;
 							}
-							this.score += this.items.scoreFor(enemyShip.getPointValue());
+							int killPoints = this.items.scoreFor(enemyShip.getPointValue());
+							this.score += killPoints;
+							// Crossfire: both bullets of a volley kill (GOG-89).
+							this.score += this.skillShots.crossfireBonus(bullet, killPoints);
 							this.shipsDestroyed++;
 							spawnSparkles(enemyShip);
 							this.enemyShipFormation.destroy(enemyShip);
@@ -1508,7 +1541,9 @@ public class GameScreen extends Screen {
 							this.items.onEnemyDefeated(enemyShip, false);
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordEnemyDefeated());
-							recyclable.add(bullet);
+							// Piercing skill nodes let the bullet go on (GOG-89).
+							if (!this.skillShots.passThrough(bullet))
+								recyclable.add(bullet);
 						}
 					}
 				}
@@ -1949,6 +1984,8 @@ public class GameScreen extends Screen {
 			if (event.type == EventType.ITEM_COLLECTED
 					|| event.type == EventType.ITEM_USED)
 				ItemSounds.play(event.itemId);
+			if (event.type == EventType.ITEM_COLLECTED) // Pickup Rush (GOG-89)
+				this.skillShots.onItemCollected(System.currentTimeMillis());
 		}
 	}
 
