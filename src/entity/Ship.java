@@ -112,8 +112,13 @@ public class Ship extends Entity {
 	/** Colour of the ship when not blinking; changed by skins (GoG). */
 	private Color skinColor = BASE_COLOR;
 
-	/** Minimum time between shots. */
-	private Cooldown shootingCooldown;
+	/**
+	 * When the ship last fired (0 = not yet). The next shot is allowed once
+	 * the current interval has passed since then, so a fire-rate change
+	 * (Pickup Rush, Bullet Storm, items) moves the next shot instead of
+	 * resetting the timer (GOG-89 review).
+	 */
+	private long lastShotAt;
 	/** Time spent inactive between hits. */
 	private Cooldown destructionCooldown;
 	/** Extra shots per second from items, added to the base rate (Team CS). */
@@ -179,7 +184,6 @@ public class Ship extends Entity {
 		this.idleSprite = type.idleSprite;
 		this.spriteType = this.idleSprite;
 		this.shootingIntervalMillis = type.shootingInterval;
-		this.shootingCooldown = Core.getCooldown(type.shootingInterval);
 		this.destructionCooldown = Core.getCooldown(1000);
 		this.freezeCooldown = Core.getCooldown(EnemyType.FREEZE_MILLIS);
 
@@ -234,9 +238,9 @@ public class Ship extends Entity {
 	public final boolean shoot(final Set<Bullet> bullets) {
 		if (isFrozen())
 			return false;
-		if (this.shootingCooldown.checkFinished()) {
-						this.shootingCooldown.reset();
-			Set<Bullet> before = new HashSet<Bullet>(bullets);
+		long now = System.currentTimeMillis();
+		if (now - this.lastShotAt >= this.shootingIntervalMillis) {
+			this.lastShotAt = now;			Set<Bullet> before = new HashSet<Bullet>(bullets);
 			final int centerX = positionX + this.width / 2;
 			final int bulletSpeed = (int) Math.round(BULLET_SPEED
 					* this.skillBulletSpeed)
@@ -338,7 +342,6 @@ public class Ship extends Entity {
 		double perSecond = 1000.0 / this.type.shootingInterval
 				* this.skillFireRate + this.itemFireRateBonus;
 		this.shootingIntervalMillis = (int) Math.round(1000.0 / perSecond);
-		this.shootingCooldown = Core.getCooldown(this.shootingIntervalMillis);
 	}
 
 	/** @return The bullets of the last shot, left to right (GOG-89). */
