@@ -44,6 +44,7 @@ import entity.Boss;
 import entity.EnemyType;
 import entity.FinalBoss;
 import entity.TempestQueen;
+import entity.AICommander;
 import entity.EnemyShipFormation;
 import entity.Entity;
 import entity.Particle;
@@ -397,12 +398,14 @@ public class GameScreen extends Screen {
 				&& this.level <= 40
 				&& this.level % 10 == 0) {
 			// GOG-74: level 10 is the AI Warship; GOG-75: level 20 is the
-			// Tempest Queen; the other boss levels keep the placeholder
-			// until their bosses are built.
+			// Tempest Queen; GOG-77: level 40 is the AI Commander; the other
+			// boss levels keep the placeholder until their bosses are built.
 			if (this.level == 10)
 				this.midBoss = new AIWarship(this.width / 2 - 24, 100);
 			else if (this.level == 20)
 				this.midBoss = new TempestQueen(this.width / 2 - 24, 100);
+			else if (this.level == 40)
+				this.midBoss = new AICommander(this.width / 2 - 24, 96);
 			else
 				this.midBoss = new FinalBoss(this.width / 2 - 24, 60,
 						DrawManager.SpriteType.FinalBoss1);
@@ -622,6 +625,7 @@ public class GameScreen extends Screen {
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY() + this.ship.getHeight() / 2);
 				this.midBoss.shoot(this.bullets, this.gameSettings);
+				manageBossAttackHits(); // AI Commander laser and claw (GOG-77)
 			} else {
 				if (!this.items.enemiesFrozen()) {
 					this.enemyShipFormation.update();
@@ -971,8 +975,7 @@ public class GameScreen extends Screen {
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
 			this.screenShake.update();
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
+			drawManager.setWorldOffset(shakeX(), shakeY());
 
 			// Ship, enemies, bullets and falling coins are hidden while
 			// paused, so the pause menu isn't cluttered by the frozen
@@ -1040,8 +1043,7 @@ public class GameScreen extends Screen {
 			drawManager.drawDamageDim(this, this.damageDim);
 
 			// Coins are part of the game world, so they shake too.
-			drawManager.setWorldOffset(this.screenShake.getOffsetX(),
-					this.screenShake.getOffsetY());
+			drawManager.setWorldOffset(shakeX(), shakeY());
 			for (Coin coin : this.coins)
 				drawManager.drawCoin(coin, coin.getPositionX(),
 						coin.getPositionY());
@@ -1049,6 +1051,9 @@ public class GameScreen extends Screen {
 			drawManager.drawItemDrops(this.items); // Item System (Team CS)
 			// HUD must stay still: remove shake offset.
 			drawManager.setWorldOffset(0, 0);
+			// Boss full-screen effects, e.g. the claw flash (GOG-77).
+			if (this.midBoss != null)
+				this.midBoss.drawOverlay(drawManager);
 			// Black hole scene ends by fading to black (GOG-74).
 			if (this.blackHole != null)
 				drawManager.drawFadeOverlay(this,
@@ -1244,6 +1249,45 @@ public class GameScreen extends Screen {
 		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
 		this.logger.info("Crashed into an enemy, " + this.lives
 				+ " lives remaining.");
+	}
+
+	/** @return Screen shake x, plus the boss's own shake (GOG-77). */
+	private int shakeX() {
+		java.awt.Point boss = this.midBoss != null
+				? this.midBoss.getShakeOffset() : null;
+		return this.screenShake.getOffsetX() + (boss != null ? boss.x : 0);
+	}
+
+	/** @return Screen shake y, plus the boss's own shake (GOG-77). */
+	private int shakeY() {
+		java.awt.Point boss = this.midBoss != null
+				? this.midBoss.getShakeOffset() : null;
+		return this.screenShake.getOffsetY() + (boss != null ? boss.y : 0);
+	}
+
+	/**
+	 * Boss attacks that aren't bullets (GOG-77: AI Commander laser and Claw
+	 * Slam). Each hit takes a life, or only the shield.
+	 */
+	private void manageBossAttackHits() {
+		int hits = this.midBoss.takePlayerHits(this.ship);
+		for (int i = 0; i < hits; i++) {
+			if (this.levelFinished || this.ship.isDestroyed()
+					|| this.lives <= 0)
+				return;
+			if (this.items.tryBlockHit()) { // Shield item (Team CS)
+				this.midBoss.onPlayerHitBlocked();
+				this.logger.info("Boss attack blocked by shield.");
+				continue;
+			}
+			this.ship.destroy();
+			this.lives--;
+			PlayerSounds.playHit(this.lives);
+			this.tookDamage = true;
+			GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives);
+			this.logger.info("Hit by a boss attack, " + this.lives
+					+ " lives remaining.");
+		}
 	}
 
 	/**

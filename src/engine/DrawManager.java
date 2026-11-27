@@ -229,7 +229,10 @@ public final class DrawManager {
 		Stinger2,
 		/** Act 4 (Deep Space) Void Mite, boom on death (GoG, GOG-86). */
 		Mite1,
-		Mite2
+		Mite2,
+		/** Level 40 boss AI Commander, two frames, 24 x 16 (GoG, GOG-77). */
+		Commander1,
+		Commander2
 	};
 
 	/**
@@ -346,6 +349,10 @@ public final class DrawManager {
 			spriteMap.put(SpriteType.Stinger2, new boolean[12][8]);
 			spriteMap.put(SpriteType.Mite1, new boolean[12][8]);
 			spriteMap.put(SpriteType.Mite2, new boolean[12][8]);
+
+			// Level 40 boss AI Commander (GoG, GOG-77)
+			spriteMap.put(SpriteType.Commander1, new boolean[24][16]);
+			spriteMap.put(SpriteType.Commander2, new boolean[24][16]);
 
 			fileManager.loadSprite(spriteMap);
 			logger.info("Finished loading the sprites.");
@@ -465,6 +472,29 @@ public final class DrawManager {
 	 * @param offsetY
 	 *            Y offset in pixels.
 	 */
+	/**
+	 * Graphics of the frame being drawn, with the current world offset
+	 * (GoG, GOG-77: the AI Commander's laser and claws are drawn as shapes).
+	 *
+	 * @return Back-buffer graphics.
+	 */
+	public java.awt.Graphics2D getWorldGraphics() {
+		return (java.awt.Graphics2D) backBufferGraphics;
+	}
+
+	/**
+	 * The game's pixel font (Silkscreen) at any size (GoG, GOG-77).
+	 *
+	 * @param size
+	 *            Font size in pixels.
+	 * @param bold
+	 *            True for bold.
+	 * @return The font.
+	 */
+	public Font getPixelFont(final float size, final boolean bold) {
+		return fontBig.deriveFont(bold ? Font.BOLD : Font.PLAIN, size);
+	}
+
 	public void setWorldOffset(final int offsetX, final int offsetY) {
 		backBufferGraphics.translate(offsetX - worldOffsetX,
 				offsetY - worldOffsetY);
