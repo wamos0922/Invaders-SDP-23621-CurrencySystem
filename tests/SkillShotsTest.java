@@ -101,6 +101,16 @@ public final class SkillShotsTest {
         check(!dodger.nearMiss(far, ship), "far pass should not count");
         check(!new SkillShots(SkillEffects.none()).nearMiss(beside, ship), "no node, no Near Miss");
 
+                // A fire-rate change (e.g. Pickup Rush) doesn't let the ship fire again
+        // straight away: the next shot still waits for the interval.
+        Ship gun = new Ship(100, 400, ShipType.STANDARD);
+        java.util.Set<Bullet> fired = new java.util.HashSet<Bullet>();
+        check(gun.shoot(fired), "first shot fires");
+        gun.setSkillBonuses(1.0, 1.2, 1.0, 1.0); // Pickup Rush starts
+        check(!gun.shoot(fired), "no instant extra shot when the fire rate changes");
+        gun.setSkillBonuses(1.0, 1.0, 1.0, 1.0); // Pickup Rush ends
+        check(!gun.shoot(fired), "no instant extra shot when it changes back");
+
         System.out.println("SkillShotsTest passed (" + checks + " checks).");
     }
 }
